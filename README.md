@@ -1,2 +1,2 @@
 # CMPE272Project
-CareConnect Project Repository
+RelefCircle Project Repository
