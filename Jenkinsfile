@@ -13,11 +13,14 @@ pipeline {
         }
         stage('Build Project') {
             steps {
-                // Create an alternative writable directory inside the container
-                sh 'mkdir -p /tmp/.m2/repository && chmod -R 777 /tmp/.m2/repository'
+                // Navigate to the backend directory where pom.xml is located
+                dir('backend') {
+                    // Create a writable directory for Maven repository
+                    sh 'mkdir -p /tmp/.m2/repository && chmod -R 777 /tmp/.m2/repository'
 
-                // Run Maven build with a different repo location
-                sh 'mvn -Dmaven.repo.local=/tmp/.m2/repository clean package'
+                    // Run Maven build with the custom repository location
+                    sh 'mvn -Dmaven.repo.local=/tmp/.m2/repository clean package'
+                }
             }
         }
         stage('List Files') {
