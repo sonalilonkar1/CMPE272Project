@@ -13,11 +13,11 @@ pipeline {
         }
         stage('Build Project') {
             steps {
-                // Ensure Maven has access to a writable repository
-                sh 'mkdir -p /root/.m2/repository && chmod -R 777 /root/.m2/repository'
-                
-                // Run Maven build with explicit repo location
-                sh 'mvn -Dmaven.repo.local=/root/.m2/repository clean package'
+                // Create an alternative writable directory inside the container
+                sh 'mkdir -p /tmp/.m2/repository && chmod -R 777 /tmp/.m2/repository'
+
+                // Run Maven build with a different repo location
+                sh 'mvn -Dmaven.repo.local=/tmp/.m2/repository clean package'
             }
         }
         stage('List Files') {
@@ -27,4 +27,3 @@ pipeline {
         }
     }
 }
-
