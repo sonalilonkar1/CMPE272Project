@@ -5,34 +5,44 @@ pipeline {
             args '-v $HOME/.m2:/root/.m2' // Caching Maven dependencies
         }
     }
+
     environment {
-        // Define environment variables
         MAVEN_REPO = '/tmp/.m2/repository'  // Maven repository location
         PROJECT_DIR = 'backend'             // Directory containing the pom.xml
-	MYSQL_HOST = "mysql"  // The MySQL service in Docker Compose
-        MYSQL_PORT = "3306"
-        MYSQL_USER = "sonalilonkar"
-        MYSQL_PASSWORD = "password"
-        MYSQL_DATABASE = "charity"
+
+        // H2 in-memory database properties
+        SPRING_DATASOURCE_URL = 'jdbc:h2:mem:testdb'
+        SPRING_DATASOURCE_USERNAME = 'sa'
+        SPRING_DATASOURCE_PASSWORD = 'password'
+        SPRING_JPA_DATABASE_PLATFORM = 'org.hibernate.dialect.H2Dialect'
     }
+
     stages {
         stage('Setup') {
             steps {
                 sh 'mvn --version'
             }
         }
+
         stage('Build Project') {
             steps {
-                // Use the environment variable for the Maven repo path and project dir
                 dir("${env.PROJECT_DIR}") {
-                    // Create a writable directory for Maven repository
                     sh "mkdir -p ${env.MAVEN_REPO} && chmod -R 777 ${env.MAVEN_REPO}"
-
-                    // Run Maven build with the custom repository location
-                    sh "mvn -Dmaven.repo.local=${env.MAVEN_REPO} clean package"
+                    // Use -Dspring.profiles.active=test to activate the test profile
+                    sh "mvn -Dmaven.repo.local=${env.MAVEN_REPO} -Dspring.profiles.active=test clean package"
                 }
             }
         }
+
+        stage('Test') {
+            steps {
+                dir("${env.PROJECT_DIR}") {
+                    // Running tests with the active test profile
+                    sh "mvn -Dmaven.repo.local=${env.MAVEN_REPO} -Dspring.profiles.active=test test"
+                }
+            }
+        }
+
         stage('List Files') {
             steps {
                 sh 'ls -lah'
