@@ -1,9 +1,8 @@
-package com.reliefcircle.datastore;
+package com.reliefcircle.util.mockdata;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.stereotype.Repository;
 
-import com.reliefcircle.profile.UserProfile;
+import com.reliefcircle.model.UserProfile;
 
 import java.util.ArrayList;
 import java.util.List;

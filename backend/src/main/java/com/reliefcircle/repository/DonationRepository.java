@@ -1,4 +1,4 @@
-package com.reliefcircle.datastore;
+package com.reliefcircle.repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 

@@ -1,4 +1,4 @@
-package com.reliefcircle.profile;
+package com.reliefcircle.model;
 
 import java.util.Objects;
 import java.util.Optional;

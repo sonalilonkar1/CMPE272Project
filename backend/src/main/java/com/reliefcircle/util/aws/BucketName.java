@@ -1,4 +1,4 @@
-package com.reliefcircle.bucket;
+package com.reliefcircle.util.aws;
 
 public enum BucketName {
     PROFILE_IMAGE("reliefcircle-test");
