@@ -1,15 +1,26 @@
-/* Requires the Docker Pipeline plugin */
 pipeline {
-    agent { docker { image 'maven:3.9.9-eclipse-temurin-21-alpine' } }
+    agent { 
+        docker { 
+            image 'maven:3.9.9-eclipse-temurin-21-alpine'
+            args '-v $HOME/.m2:/root/.m2' // Caching Maven dependencies
+        } 
+    }
     stages {
-        stage('build') {
+        stage('Setup') {
             steps {
                 sh 'mvn --version'
-		sh '''
-                    echo "Multiline shell steps works too"
-                    ls -lah
-                '''
+            }
+        }
+        stage('Build Project') {
+            steps {
+                sh 'mvn clean package'
+            }
+        }
+        stage('List Files') {
+            steps {
+                sh 'ls -lah'
             }
         }
     }
 }
+
