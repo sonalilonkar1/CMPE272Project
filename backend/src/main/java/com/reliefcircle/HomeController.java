@@ -15,4 +15,9 @@ public class HomeController {
     public String appHome() {
         return "Welcome to the /app endpoint!";
     }
+    
+    @GetMapping("/test")
+    public String testHome() {
+        return "Welcome to the /test endpoint!";
+    }
 }
