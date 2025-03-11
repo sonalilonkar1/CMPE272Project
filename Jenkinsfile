@@ -1,9 +1,14 @@
 pipeline {
     agent {
         docker {
-            image 'maven:3.9.9-eclipse-temurin-21-alpine'
+            image 'maven:3.9.9-eclipse-temurin-17-alpine'
             args '-v $HOME/.m2:/root/.m2' // Caching Maven dependencies
         }
+    }
+    environment {
+        // Define environment variables
+        MAVEN_REPO = '/tmp/.m2/repository'  // Maven repository location
+        PROJECT_DIR = 'backend'             // Directory containing the pom.xml
     }
     stages {
         stage('Setup') {
@@ -13,13 +18,13 @@ pipeline {
         }
         stage('Build Project') {
             steps {
-                // Navigate to the backend directory where pom.xml is located
-                dir('backend') {
+                // Use the environment variable for the Maven repo path and project dir
+                dir("${env.PROJECT_DIR}") {
                     // Create a writable directory for Maven repository
-                    sh 'mkdir -p /tmp/.m2/repository && chmod -R 777 /tmp/.m2/repository'
+                    sh "mkdir -p ${env.MAVEN_REPO} && chmod -R 777 ${env.MAVEN_REPO}"
 
                     // Run Maven build with the custom repository location
-                    sh 'mvn -Dmaven.repo.local=/tmp/.m2/repository clean package'
+                    sh "mvn -Dmaven.repo.local=${env.MAVEN_REPO} clean package"
                 }
             }
         }
