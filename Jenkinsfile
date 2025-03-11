@@ -1,9 +1,9 @@
 pipeline {
-    agent { 
-        docker { 
+    agent {
+        docker {
             image 'maven:3.9.9-eclipse-temurin-21-alpine'
             args '-v $HOME/.m2:/root/.m2' // Caching Maven dependencies
-        } 
+        }
     }
     stages {
         stage('Setup') {
@@ -13,7 +13,11 @@ pipeline {
         }
         stage('Build Project') {
             steps {
-                sh 'mvn clean package'
+                // Ensure Maven has access to a writable repository
+                sh 'mkdir -p /root/.m2/repository && chmod -R 777 /root/.m2/repository'
+                
+                // Run Maven build with explicit repo location
+                sh 'mvn -Dmaven.repo.local=/root/.m2/repository clean package'
             }
         }
         stage('List Files') {
