@@ -9,6 +9,11 @@ pipeline {
         // Define environment variables
         MAVEN_REPO = '/tmp/.m2/repository'  // Maven repository location
         PROJECT_DIR = 'backend'             // Directory containing the pom.xml
+	MYSQL_HOST = "mysql"  // The MySQL service in Docker Compose
+        MYSQL_PORT = "3306"
+        MYSQL_USER = "sonalilonkar"
+        MYSQL_PASSWORD = "password"
+        MYSQL_DATABASE = "charity"
     }
     stages {
         stage('Setup') {
