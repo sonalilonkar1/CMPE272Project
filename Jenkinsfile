@@ -9,12 +9,6 @@ pipeline {
     environment {
         MAVEN_REPO = '/tmp/.m2/repository'  // Maven repository location
         PROJECT_DIR = 'backend'             // Directory containing the pom.xml
-
-        // H2 in-memory database properties
-        SPRING_DATASOURCE_URL = 'jdbc:h2:mem:testdb'
-        SPRING_DATASOURCE_USERNAME = 'sa'
-        SPRING_DATASOURCE_PASSWORD = 'password'
-        SPRING_JPA_DATABASE_PLATFORM = 'org.hibernate.dialect.H2Dialect'
     }
 
     stages {
