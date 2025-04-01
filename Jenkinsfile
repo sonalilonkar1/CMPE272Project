@@ -9,8 +9,8 @@ pipeline {
     environment {
         MAVEN_REPO = '/tmp/.m2/repository'  // Maven repository location
         PROJECT_DIR = 'backend'             // Directory containing the pom.xml
-        DEPLOY_SERVER = 'your.server.com'   // Change this to your server's IP or hostname
-        DEPLOY_DIR = '/path/to/deploy/directory' // The directory on the remote server to deploy to
+        DEPLOY_SERVER = '192.168.1.100'   // Change this to your server's IP or hostname
+        DEPLOY_DIR = '/var/www/myapp/' // The directory on the remote server to deploy to
         SSH_KEY_PATH = '/path/to/your/private/key' // Path to your SSH private key (use Jenkins credentials store if possible)
         DEPLOY_SCRIPT_PATH = '/path/to/deploy.sh'  // Path to your deployment script on the remote server
     }
