@@ -1,44 +1,33 @@
 package com.reliefcircle.model;
 
+import javax.persistence.*;
+import lombok.*;
+
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
 
+@AllArgsConstructor
+@NoArgsConstructor
+@Getter
+@Setter
+@ToString
+@Entity
+@Table(name = "user_profile")
 public class UserProfile {
+
+    @Id
+    @Column(name = "user_profile_id")
     private UUID userProfileid;
-    private String username ;
+
+    @Column(name = "username")
+    private String username;
+
+    @Column(name = "user_profile_image_link")
     private String userProfileImageLink;
-
-    public UserProfile(UUID userProfileid, String username, String userProfileImageLink) {
-        this.userProfileid = userProfileid;
-        this.username = username;
-        this.userProfileImageLink = userProfileImageLink;
-    }
-
-    public UUID getUserProfileid() {
-        return userProfileid;
-    }
-
-    public void setUserProfileid(UUID userProfileid) {
-        this.userProfileid = userProfileid;
-    }
-
-    public String getUsername() {
-        return username;
-    }
-
-    public void setUsername(String username) {
-        this.username = username;
-    }
-
-
 
     public Optional<String> getUserProfileImageLink() {
         return Optional.ofNullable(userProfileImageLink);
-    }
-
-    public void setUserProfileImageLink(String userProfileImageLink) {
-        this.userProfileImageLink = userProfileImageLink;
     }
 
     @Override
