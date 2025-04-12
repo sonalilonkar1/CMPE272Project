@@ -22,14 +22,14 @@ import lombok.ToString;
 @Data
 public class DonationDto {
 
-  private Long id;
-  private String paypalId;
-  private String email;
-  private double amount;
-  private String status;
-  private Date paymentDate;
-  private String currencyCode;
-  private boolean volunteerOptIn;
-  private UUID donorId; // Reference to UserProfile
-  private Long charityId; // Reference to Charity
+    private Long id;
+    private String paypalId;
+    private String email;
+    private double amount;
+    private String status;
+    private Date paymentDate;
+    private String currencyCode;
+    private boolean volunteerOptIn;
+    private UUID donorId; // Reference to UserProfile
+    private Long charityId; // Reference to Charity
 }

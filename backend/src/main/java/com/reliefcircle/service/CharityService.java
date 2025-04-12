@@ -17,9 +17,6 @@ import com.paypal.http.HttpResponse;
 import com.reliefcircle.config.PayPalConfig;
 import com.reliefcircle.dto.CharityDto;
 import com.reliefcircle.dto.DonationDto;
-import com.reliefcircle.model.Charity;
-import com.reliefcircle.model.Donation;
-import com.reliefcircle.model.DonationStatus;
 import com.reliefcircle.paypal.PaymentDetails;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
@@ -73,7 +70,7 @@ public class CharityService {
             .email(donation.getEmail())
             .id(donation.getId())
             .paypalId(donation.getPaypalId())
-            .status(donation.getStatus() != null ? donation.getStatus().name() : null)
+            .status(donation.getStatus() != null ? donation.getStatus() : null)
             .paymentDate(donation.getPaymentDate())
             .currencyCode(donation.getCurrencyCode())
             .build();
@@ -170,16 +167,16 @@ public class CharityService {
                     .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + charityId));
 
             Donation donation = Donation.builder()
-                    .paypalId(paypalOrderId)
-                    .amount(details.getAmount())
-                    .email(details.getEmail())
-                    .status(DonationStatus.COMPLETED)
-                    .paymentDate(new Date())
-                    .currencyCode(details.getCurrencyCode())
-                    .volunteerOptIn(volunteerOptIn)
-                    .donor(donor)
-                    .charity(charity)
-                    .build();
+                .paypalId(paypalOrderId)
+                .amount(details.getAmount())
+                .email(details.getEmail())
+                .status("COMPLETED") 
+                .paymentDate(new Date())
+                .currencyCode(details.getCurrencyCode())
+                .volunteerOptIn(volunteerOptIn)
+                .donorId(donor.getUserProfileid()) 
+                .charityId(charity.getId()) 
+                .build();
 
             Donation savedDonation = donationRepository.save(donation);
 
@@ -222,6 +219,25 @@ public class CharityService {
                 .comments(verification.getComments())
                 .submittedAt(verification.getSubmittedAt())
                 .build();
+    }
+
+
+    public List<DonationDto> getDonationsForDonor(UUID donorId) {
+        return donationRepository.findByDonorId(donorId)
+            .stream()
+            .map(donation -> new DonationDto(
+                donation.getId(),
+                donation.getPaypalId(),
+                donation.getEmail(),
+                donation.getAmount(),
+                donation.getStatus(),
+                donation.getPaymentDate(),
+                donation.getCurrencyCode(),
+                donation.isVolunteerOptIn(),
+                donation.getDonorId(),
+                donation.getCharityId()
+            ))
+            .collect(Collectors.toList());
     }
 
 }
