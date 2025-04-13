@@ -1,55 +1,53 @@
 package com.reliefcircle.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.EnumType;
-import javax.persistence.Enumerated;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.ToString;
 
+import javax.persistence.*;
 import java.util.Date;
+import java.util.UUID;
 
-@AllArgsConstructor
-@ToString
-@Builder
-@NoArgsConstructor
-@Getter
-@Setter
 @Entity
 @Table(name = "donation")
+@Getter
+@Setter
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class Donation {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @GeneratedValue(strategy = GenerationType.AUTO)
     private Long id;
 
     @Column(name = "paypal_id", nullable = false)
-    private String paypalId;
+    private String paypalId; // Changed from "paypal" to "paypal_id" to match DTO
 
-    @Column(nullable = false)
+    @Column(name = "email")
     private String email;
 
-    @Column(nullable = false)
+    @Column(name = "amount")
     private double amount;
-    
-    @Enumerated(EnumType.STRING)
+
     @Column(name = "status")
-    private DonationStatus status;
-    
-    @Temporal(TemporalType.TIMESTAMP)
+    private String status;
+
     @Column(name = "payment_date")
+    @Temporal(TemporalType.TIMESTAMP)
     private Date paymentDate;
-    
-    @Column(name = "currency_code", length = 3)
+
+    @Column(name = "currency_code")
     private String currencyCode;
+
+    @Column(name = "volunteer_opt_in")
+    private boolean volunteerOptIn;
+
+    @Column(name = "donor_id", nullable = false)
+    private UUID donorId;
+
+    @Column(name = "charity_id", nullable = false)
+    private Long charityId;
 }

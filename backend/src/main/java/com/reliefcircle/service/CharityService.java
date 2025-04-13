@@ -1,7 +1,7 @@
 package com.reliefcircle.service;
 
-import java.io.IOException;
 import java.util.Date;
+import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -10,20 +10,20 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpServerErrorException;
+import com.reliefcircle.exception.ResourceNotFoundException;
 import com.paypal.orders.Order;
 import com.paypal.core.PayPalHttpClient;
 import com.paypal.http.HttpResponse;
-import com.paypal.http.exceptions.HttpException;
-import com.paypal.orders.OrdersGetRequest;
 import com.reliefcircle.config.PayPalConfig;
 import com.reliefcircle.dto.CharityDto;
 import com.reliefcircle.dto.DonationDto;
-import com.reliefcircle.model.Charity;
-import com.reliefcircle.model.Donation;
-import com.reliefcircle.model.DonationStatus;
 import com.reliefcircle.paypal.PaymentDetails;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
+import com.reliefcircle.repository.UserProfileRepository;
+import com.reliefcircle.repository.VolunteerVerificationRepository;
+import com.reliefcircle.dto.VolunteerVerificationDto;
+import com.reliefcircle.model.*;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -32,16 +32,22 @@ public class CharityService {
 
     private final CharityRepository charityRepository;
     private final DonationRepository donationRepository;
+    private final UserProfileRepository userProfileRepository;
+    private final VolunteerVerificationRepository volunteerVerificationRepository;
     private final AWSService awsService;
     private final PayPalConfig payPalConfig;
 
     @Autowired
-    public CharityService(CharityRepository charityRepository, 
-                          DonationRepository donationRepository, 
+    public CharityService(CharityRepository charityRepository,
+                          DonationRepository donationRepository,
+                          UserProfileRepository userProfileRepository,
+                          VolunteerVerificationRepository volunteerVerificationRepository,
                           AWSService awsService,
                           PayPalConfig payPalConfig) {
         this.charityRepository = charityRepository;
         this.donationRepository = donationRepository;
+        this.userProfileRepository = userProfileRepository;
+        this.volunteerVerificationRepository = volunteerVerificationRepository;
         this.awsService = awsService;
         this.payPalConfig = payPalConfig;
     }
@@ -64,7 +70,7 @@ public class CharityService {
             .email(donation.getEmail())
             .id(donation.getId())
             .paypalId(donation.getPaypalId())
-            .status(donation.getStatus() != null ? donation.getStatus().name() : null)
+            .status(donation.getStatus() != null ? donation.getStatus() : null)
             .paymentDate(donation.getPaymentDate())
             .currencyCode(donation.getCurrencyCode())
             .build();
@@ -127,71 +133,6 @@ public class CharityService {
     }
 
     /**
-     * Process a PayPal donation and save it to the database
-     * 
-     * @param paypalOrderId The PayPal order ID to verify and process
-     * @return The saved donation as a DonationDto
-     * @throws HttpServerErrorException if the donation data is invalid or cannot be processed
-     */
-    @Transactional
-    public DonationDto addDonation(String paypalOrderId) {
-        log.info("Processing PayPal donation with order ID: {}", paypalOrderId);
-
-        try {
-            // Get PayPal HTTP client
-            PayPalHttpClient client = payPalConfig.getPayPalClient();
-            
-            // Create order get request
-            OrdersGetRequest request = new OrdersGetRequest(paypalOrderId);
-            
-            // Call API to get order details
-            HttpResponse<Order> response = client.execute(request);
-            Order order = response.result();
-            
-            // Validate payment status
-            if (!"COMPLETED".equals(order.status())) {
-                throw new IllegalStateException("Payment not completed. Status: " + order.status());
-            }
-            
-            // Extract payment details from the order
-            PaymentDetails details = extractPaymentDetails(order);
-            
-            // Create and save donation entity
-            Donation donation = Donation.builder()
-                .paypalId(paypalOrderId)
-                .amount(details.getAmount())
-                .email(details.getEmail())
-                .status(DonationStatus.COMPLETED)
-                .paymentDate(new Date())
-                .currencyCode(details.getCurrencyCode())
-                .build();
-            
-            log.info("Saving verified donation: {}", donation);
-            Donation savedDonation = donationRepository.save(donation);
-            
-            return convert(savedDonation);
-        } catch (HttpException e) {
-            log.error("PayPal API error: {}", e.getMessage(), e);
-            throw new HttpServerErrorException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "Failed to verify payment with PayPal: " + e.getMessage()
-            );
-        } catch (IOException e) {
-            log.error("IO error while communicating with PayPal: {}", e.getMessage(), e);
-            throw new HttpServerErrorException(
-                HttpStatus.SERVICE_UNAVAILABLE,
-                "IO error while communicating with PayPal: " + e.getMessage()
-            );
-        } catch (Exception e) {
-            log.error("Error processing donation: {}", e.getMessage(), e);
-            throw new HttpServerErrorException(
-                HttpStatus.BAD_REQUEST,
-                "Invalid donation data: " + e.getMessage()
-            );
-        }
-    }
-
-    /**
      * Extract payment details from a PayPal Order object
      * 
      * @param order The PayPal Order object
@@ -203,6 +144,100 @@ public class CharityService {
         String currencyCode = order.purchaseUnits().get(0).amountWithBreakdown().currencyCode();
 
         return new PaymentDetails(amount, email, currencyCode);
+    }
+
+    @Transactional
+    public DonationDto addDonation(String paypalOrderId, UUID donorId, Long charityId, boolean volunteerOptIn) {
+        log.info("Processing PayPal donation with order ID: {}, donor: {}, charity: {}", paypalOrderId, donorId, charityId);
+
+        try {
+            // Get PayPal HTTP client and order details
+            PayPalHttpClient client = payPalConfig.getPayPalClient();
+            HttpResponse<com.paypal.orders.Order> response = client.execute(new com.paypal.orders.OrdersGetRequest(paypalOrderId));
+            com.paypal.orders.Order order = response.result();
+
+            if (!"COMPLETED".equals(order.status())) {
+                throw new IllegalStateException("Payment not completed. Status: " + order.status());
+            }
+
+            PaymentDetails details = extractPaymentDetails(order);
+            UserProfile donor = userProfileRepository.findById(donorId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Donor not found with ID: " + donorId));
+            Charity charity = charityRepository.findById(charityId)
+                    .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + charityId));
+
+            Donation donation = Donation.builder()
+                .paypalId(paypalOrderId)
+                .amount(details.getAmount())
+                .email(details.getEmail())
+                .status("COMPLETED") 
+                .paymentDate(new Date())
+                .currencyCode(details.getCurrencyCode())
+                .volunteerOptIn(volunteerOptIn)
+                .donorId(donor.getUserProfileid()) 
+                .charityId(charity.getId()) 
+                .build();
+
+            Donation savedDonation = donationRepository.save(donation);
+
+            if (volunteerOptIn) {
+                VolunteerVerification verification = VolunteerVerification.builder()
+                        .volunteer(donor)
+                        .charity(charity)
+                        .status(VerificationStatus.PENDING)
+                        .build();
+                volunteerVerificationRepository.save(verification);
+            }
+
+            return convert(savedDonation);
+        } catch (Exception e) {
+            log.error("Error processing donation: {}", e.getMessage(), e);
+            throw new HttpServerErrorException(HttpStatus.BAD_REQUEST, "Invalid donation data: " + e.getMessage());
+        }
+    }
+
+    @Transactional
+    public VolunteerVerificationDto submitVerification(Long verificationId, String comments, String status) {
+        VolunteerVerification verification = volunteerVerificationRepository.findById(verificationId)
+                .orElseThrow(() -> new ResourceNotFoundException("Verification not found with ID: " + verificationId));
+
+        VerificationStatus newStatus = VerificationStatus.valueOf(status.toUpperCase());
+        verification.setStatus(newStatus);
+        verification.setComments(comments);
+        verification.setSubmittedAt(new Date());
+
+        VolunteerVerification updated = volunteerVerificationRepository.save(verification);
+        return convertVerification(updated);
+    }
+
+    private VolunteerVerificationDto convertVerification(VolunteerVerification verification) {
+        return VolunteerVerificationDto.builder()
+                .id(verification.getId())
+                .volunteerId(verification.getVolunteer().getUserProfileid())
+                .charityId(verification.getCharity().getId())
+                .status(verification.getStatus().name())
+                .comments(verification.getComments())
+                .submittedAt(verification.getSubmittedAt())
+                .build();
+    }
+
+
+    public List<DonationDto> getDonationsForDonor(UUID donorId) {
+        return donationRepository.findByDonorId(donorId)
+            .stream()
+            .map(donation -> new DonationDto(
+                donation.getId(),
+                donation.getPaypalId(),
+                donation.getEmail(),
+                donation.getAmount(),
+                donation.getStatus(),
+                donation.getPaymentDate(),
+                donation.getCurrencyCode(),
+                donation.isVolunteerOptIn(),
+                donation.getDonorId(),
+                donation.getCharityId()
+            ))
+            .collect(Collectors.toList());
     }
 
 }

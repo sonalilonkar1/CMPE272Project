@@ -4,5 +4,10 @@ public enum DonationStatus {
 	PENDING,
     COMPLETED,
     FAILED,
-    REFUNDED
+    REFUNDED;
+
+    @Override
+    public String toString() {
+        return name();
+    }
 }
