@@ -1,6 +1,6 @@
 package com.reliefcircle.repository;
 
-import com.reliefcircle.model.UserProfile;
+import com.reliefcircle.model.User;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -8,7 +8,6 @@ import java.util.UUID;
 import java.util.Optional;
 
 @Repository
-public interface UserProfileRepository extends JpaRepository<UserProfile, UUID> {
-
-    Optional<UserProfile> findByExternalId(String externalId);
+public interface UserRepository extends JpaRepository<User, UUID> {
+    Optional<User> findByExternalId(String externalId);
 }

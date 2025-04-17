@@ -5,49 +5,49 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.ToString;
 
-import javax.persistence.*;
-import java.util.Date;
-import java.util.UUID;
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
-@Entity
-@Table(name = "donation")
-@Getter
-@Setter
+@AllArgsConstructor
+@ToString
 @Builder
 @NoArgsConstructor
-@AllArgsConstructor
+@Getter
+@Setter
+@Entity
+@Table(name = "donations")
 public class Donation {
-
     @Id
-    @GeneratedValue(strategy = GenerationType.AUTO)
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "paypal_id", nullable = false)
-    private String paypalId; // Changed from "paypal" to "paypal_id" to match DTO
+    @Column(nullable = false)
+    private String paypalOrderId;
 
-    @Column(name = "email")
-    private String email;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "donor_id", nullable = false)
+    private User donor;
 
-    @Column(name = "amount")
-    private double amount;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "charity_id", nullable = false)
+    private Charity charity;
 
-    @Column(name = "status")
-    private String status;
+    @Column(nullable = false)
+    private Double amount;
 
-    @Column(name = "payment_date")
-    @Temporal(TemporalType.TIMESTAMP)
-    private Date paymentDate;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private DonationStatus status;
 
-    @Column(name = "currency_code")
-    private String currencyCode;
+    @Column(nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
 
-    @Column(name = "volunteer_opt_in")
-    private boolean volunteerOptIn;
-
-    @Column(name = "donor_id", nullable = false)
-    private UUID donorId;
-
-    @Column(name = "charity_id", nullable = false)
-    private Long charityId;
+    public enum DonationStatus {
+        PENDING,
+        COMPLETED,
+        FAILED
+    }
 }

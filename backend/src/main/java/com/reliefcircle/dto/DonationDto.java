@@ -1,35 +1,39 @@
 package com.reliefcircle.dto;
 
-import java.util.Date;
+import com.reliefcircle.model.Donation;
+import lombok.Data;
+import lombok.Builder;
+import lombok.NoArgsConstructor;
+import lombok.AllArgsConstructor;
+
+import java.time.LocalDateTime;
 import java.util.UUID;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.EqualsAndHashCode;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
-
-@AllArgsConstructor
-@EqualsAndHashCode
-@Builder
-@Getter
-@Setter
-@NoArgsConstructor
-@ToString
 @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class DonationDto {
-
     private Long id;
-    private String paypalId;
-    private String email;
-    private double amount;
-    private String status;
-    private Date paymentDate;
-    private String currencyCode;
-    private boolean volunteerOptIn;
-    private UUID donorId; // Reference to UserProfile
-    private Long charityId; // Reference to Charity
+    private String paypalOrderId;
+    private UUID donorId;
+    private String donorName;
+    private String donorEmail;
+    private Long charityId;
+    private String charityName;
+    private Double amount;
+    private Donation.DonationStatus status;
+    private LocalDateTime createdAt;
+
+    public static DonationDto fromEntity(Donation donation) {
+        DonationDto dto = new DonationDto();
+        dto.setId(donation.getId());
+        dto.setPaypalOrderId(donation.getPaypalOrderId());
+        dto.setDonorId(donation.getDonor().getId());
+        dto.setCharityId(donation.getCharity().getId());
+        dto.setAmount(donation.getAmount());
+        dto.setStatus(donation.getStatus());
+        dto.setCreatedAt(donation.getCreatedAt());
+        return dto;
+    }
 }

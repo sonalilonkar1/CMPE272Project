@@ -1,6 +1,8 @@
 package com.reliefcircle.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -33,12 +35,23 @@ public class CharityController {
     }
     
     /**
-     * Get all charities
-     * @return List of all charities
+     * Get all charities with optional filtering by donorId or fundraiserId
+     * @param donorId Optional donor ID to filter charities by donations
+     * @param fundraiserId Optional fundraiser ID to filter charities by fundraiser
+     * @return List of charities based on the provided filters
      */
     @GetMapping
-    public ResponseEntity<List<CharityDto>> getAllCharities() {
-        return ResponseEntity.ok(charityService.getAllCharities());
+    public ResponseEntity<List<CharityDto>> getAllCharities(
+            @RequestParam(required = false) UUID donorId,
+            @RequestParam(required = false) UUID fundraiserId) {
+        
+        if (donorId != null) {
+            return ResponseEntity.ok(charityService.getCharitiesByDonor(donorId));
+        } else if (fundraiserId != null) {
+            return ResponseEntity.ok(charityService.getCharitiesByFundraiser(fundraiserId));
+        } else {
+            return ResponseEntity.ok(charityService.getAllCharities());
+        }
     }
     
     /**
@@ -68,28 +81,31 @@ public class CharityController {
     
     /**
      * Register a new charity
-     * @param cname Charity name
-     * @param location Charity location
-     * @param email Contact email
+     * @param name Charity name
      * @param description Charity description
+     * @param organizationName Charity organization name
+     * @param category Charity category
+     * @param targetAmount Charity target amount
      * @param file Logo or image file
      * @return The created charity
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, 
                  produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<CharityDto> registerCharity(
-            @RequestParam("cname") String cname,
-            @RequestParam("location") String location,
-            @RequestParam("email") String email,
-            @RequestParam("description") String description,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("name") String name,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "organizationName", required = false) String organizationName,
+            @RequestParam(value = "category", required = false) String category,
+            @RequestParam(value = "targetAmount", required = false) BigDecimal targetAmount,
+            @RequestParam(value = "file", required = false) MultipartFile file) {
         
         try {
             CharityDto charityRequest = CharityDto.builder()
-                    .cname(cname)
-                    .location(location)
-                    .email(email)
+                    .name(name)
                     .description(description)
+                    .organizationName(organizationName)
+                    .category(category)
+                    .targetAmount(targetAmount)
                     .file(file)
                     .build();
             
