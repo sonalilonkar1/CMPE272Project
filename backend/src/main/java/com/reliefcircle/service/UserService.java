@@ -5,8 +5,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import com.reliefcircle.exception.EmptyFileException;
 import com.reliefcircle.exception.ResourceNotFoundException;
-import com.reliefcircle.model.UserProfile;
-import com.reliefcircle.repository.UserProfileRepository;
+import com.reliefcircle.model.User;
+import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.util.aws.BucketName;
 import com.reliefcircle.util.aws.FileStore;
 
@@ -19,36 +19,36 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 @Slf4j
-public class UserProfileService {
-    private final UserProfileRepository userProfileRepository;
+public class UserService {
+    private final UserRepository UserRepository;
     private final FileStore fileStore;
 
-    public List<UserProfile> getAllUserProfiles() {
-        return userProfileRepository.findAll();
+    public List<User> getAllUsers() {
+        return UserRepository.findAll();
     }
 
-    public UserProfile getUserProfileById(UUID userProfileId) {
-        return userProfileRepository.findById(userProfileId)
+    public User getUserById(UUID UserId) {
+        return UserRepository.findById(UserId)
                 .orElseThrow(() -> new ResourceNotFoundException(
-                        String.format("User profile not found with ID: %s", userProfileId)));
+                        String.format("User profile not found with ID: %s", UserId)));
     }
     
-    public void uploadUserProfileImage(UUID userProfileId, MultipartFile file) {
+    public void uploadUserImage(UUID UserId, MultipartFile file) {
         // Validate inputs
-        Objects.requireNonNull(userProfileId, "User profile ID cannot be null");
+        Objects.requireNonNull(UserId, "User profile ID cannot be null");
         validateFile(file);
 
         try {
             // Get user profile
-            UserProfile userProfile = getUserProfileById(userProfileId);
+            User User = getUserById(UserId);
             
             // Prepare upload details
             Map<String, String> metadata = extractMetadata(file);
-            String path = buildS3FolderPath(userProfile);
+            String path = buildS3FolderPath(User);
             Optional<String> filename = generateUniqueFilename(file.getOriginalFilename());
             
             if (!filename.isPresent()) {
-                log.error("Failed to generate filename for user: {}", userProfileId);
+                log.error("Failed to generate filename for user: {}", UserId);
                 throw new RuntimeException("Failed to generate filename for upload");
             }
             
@@ -56,41 +56,41 @@ public class UserProfileService {
             fileStore.save(path, filename.get(), Optional.of(metadata), file.getInputStream());
             
             // Update user profile with image link
-            userProfile.setUserProfileImageLink(filename.get());
-            userProfileRepository.save(userProfile);
+            User.setUserProfileImageLink(filename.get());
+            UserRepository.save(User);
             
-            log.info("Successfully uploaded profile image for user: {}", userProfileId);
+            log.info("Successfully uploaded profile image for user: {}", UserId);
         } catch (ResourceNotFoundException e) {
-            log.error("User profile not found for image upload: {}", userProfileId);
+            log.error("User profile not found for image upload: {}", UserId);
             throw e;
         } catch (IOException e) {
-            log.error("Failed to read file stream during profile image upload for user: {}", userProfileId, e);
+            log.error("Failed to read file stream during profile image upload for user: {}", UserId, e);
             throw new RuntimeException("Failed to process the uploaded file", e);
         } catch (Exception e) {
-            log.error("Unexpected error during profile image upload for user: {}", userProfileId, e);
+            log.error("Unexpected error during profile image upload for user: {}", UserId, e);
             throw new RuntimeException("Failed to upload profile image", e);
         }
     }
     
-    public byte[] downloadUserProfileImage(UUID userProfileId) {
-        UserProfile userProfile = getUserProfileById(userProfileId);
+    public byte[] downloadUserImage(UUID UserId) {
+        User User = getUserById(UserId);
         
         // Handle Optional<String> correctly
-        Optional<String> imageLinkOptional = userProfile.getUserProfileImageLink();
+        Optional<String> imageLinkOptional = User.getUserProfileImageLink();
         if (!imageLinkOptional.isPresent()) {
-            log.info("No profile image found for user: {}", userProfileId);
+            log.info("No profile image found for user: {}", UserId);
             return new byte[0];
         }
         
         String imageLink = imageLinkOptional.get();
-        String path = buildS3FolderPath(userProfile);
+        String path = buildS3FolderPath(User);
         
         try {
             byte[] imageData = fileStore.download(path, imageLink);
-            log.info("Successfully downloaded profile image for user: {}", userProfileId);
+            log.info("Successfully downloaded profile image for user: {}", UserId);
             return imageData;
         } catch (Exception e) {
-            log.error("Failed to download profile image for user: {}", userProfileId, e);
+            log.error("Failed to download profile image for user: {}", UserId, e);
             throw new IllegalStateException("Failed to download profile image", e);
         }
     }
@@ -111,10 +111,10 @@ public class UserProfileService {
         return metadata;
     }
     
-    private String buildS3FolderPath(UserProfile userProfile) {
+    private String buildS3FolderPath(User User) {
         return String.format("%s/%s", 
                 BucketName.PROFILE_IMAGE.getBucketName(), 
-                userProfile.getUserProfileid());
+                User.getId());
     }
     
     private Optional<String> generateUniqueFilename(String originalFilename) {

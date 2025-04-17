@@ -1,6 +1,5 @@
 package com.reliefcircle.service;
 
-import java.util.Date;
 import java.util.UUID;
 import java.util.List;
 import java.util.Optional;
@@ -20,11 +19,14 @@ import com.reliefcircle.dto.DonationDto;
 import com.reliefcircle.paypal.PaymentDetails;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
-import com.reliefcircle.repository.UserProfileRepository;
-import com.reliefcircle.repository.VolunteerVerificationRepository;
-import com.reliefcircle.dto.VolunteerVerificationDto;
+import com.reliefcircle.repository.UserRepository;
+import com.reliefcircle.repository.VerificationRepository;
+import com.reliefcircle.dto.VerificationDto;
 import com.reliefcircle.model.*;
 import lombok.extern.slf4j.Slf4j;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import com.reliefcircle.exception.CharityException;
 
 @Slf4j
 @Service
@@ -32,22 +34,22 @@ public class CharityService {
 
     private final CharityRepository charityRepository;
     private final DonationRepository donationRepository;
-    private final UserProfileRepository userProfileRepository;
-    private final VolunteerVerificationRepository volunteerVerificationRepository;
+    private final UserRepository userRepository;
+    private final VerificationRepository verificationRepository;
     private final AWSService awsService;
     private final PayPalConfig payPalConfig;
 
     @Autowired
     public CharityService(CharityRepository charityRepository,
                           DonationRepository donationRepository,
-                          UserProfileRepository userProfileRepository,
-                          VolunteerVerificationRepository volunteerVerificationRepository,
+                          UserRepository userRepository,
+                          VerificationRepository verificationRepository,
                           AWSService awsService,
                           PayPalConfig payPalConfig) {
         this.charityRepository = charityRepository;
         this.donationRepository = donationRepository;
-        this.userProfileRepository = userProfileRepository;
-        this.volunteerVerificationRepository = volunteerVerificationRepository;
+        this.userRepository = userRepository;
+        this.verificationRepository = verificationRepository;
         this.awsService = awsService;
         this.payPalConfig = payPalConfig;
     }
@@ -55,52 +57,84 @@ public class CharityService {
     private CharityDto convert(Charity charity) {
         return CharityDto.builder()
             .id(charity.getId())
-            .approved(charity.isApproved())
-            .cname(charity.getCharityName())
+            .name(charity.getName())
             .description(charity.getDescription())
-            .email(charity.getEmail())
-            .fileLink(charity.getFileLink())
-            .location(charity.getLocation())
+            .organizationName(charity.getOrganizationName())
+            .category(charity.getCategory())
+            .targetAmount(charity.getTargetAmount())
+            .raisedAmount(charity.getRaisedAmount())
+            .isVerified(charity.getIsVerified())
+            .createdAt(charity.getCreatedAt())
+            .fundraiserId(charity.getFundraiser() != null ? charity.getFundraiser().getId() : null)
+            .fundraiserName(charity.getFundraiser() != null ? charity.getFundraiser().getFullName() : null)
+            .fundraiserEmail(charity.getFundraiser() != null ? charity.getFundraiser().getEmail() : null)
             .build();
     }
 
     private DonationDto convert(Donation donation) {
         return DonationDto.builder()
-            .amount(donation.getAmount())
-            .email(donation.getEmail())
             .id(donation.getId())
-            .paypalId(donation.getPaypalId())
-            .status(donation.getStatus() != null ? donation.getStatus() : null)
-            .paymentDate(donation.getPaymentDate())
-            .currencyCode(donation.getCurrencyCode())
+            .donorId(donation.getDonor().getId())
+            .donorName(donation.getDonor().getFullName())
+            .donorEmail(donation.getDonor().getEmail())
+            .charityId(donation.getCharity().getId())
+            .charityName(donation.getCharity().getName())
+            .amount(donation.getAmount())
+            .status(donation.getStatus())
+            .createdAt(donation.getCreatedAt())
             .build();
     }
 
     public CharityDto registerCharity(CharityDto dto) {
         log.info("Register Req: {}", dto);
 
-        String key = (dto.getCname() + "_" + dto.getEmail() + "_" + dto.getFile().getOriginalFilename())
-                .replaceAll("\\s+", "_");
+        if (dto.getName() == null || dto.getName().trim().isEmpty()) {
+            throw new IllegalArgumentException("Charity name is required");
+        }
+
+        // Original file validation
+        // if (dto.getFile() == null) {
+        //     throw new IllegalArgumentException("Charity image file is required");
+        // }
+
+        // Original key generation
+        // String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
+        //         .replaceAll("\\s+", "_");
+
+        // New key generation that works with or without file
+        String key = dto.getFile() != null ? 
+            (dto.getName() + "_" + dto.getFile().getOriginalFilename()).replaceAll("\\s+", "_") :
+            dto.getName().replaceAll("\\s+", "_");
 
         Charity charity = Charity.builder()
-            .charityName(dto.getCname())
-            .approved(false)
-            .description(dto.getDescription())
-            .email(dto.getEmail())
-            .location(dto.getLocation())
-            .fileLink(awsService.getCloudFrontUrl() + "/" + key)
+            .name(dto.getName())
+            .description(dto.getDescription() != null ? dto.getDescription() : "")
+            .organizationName(dto.getOrganizationName() != null ? dto.getOrganizationName() : "")
+            .category(dto.getCategory() != null ? dto.getCategory() : "General")
+            .targetAmount(dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO)
+            .raisedAmount(BigDecimal.ZERO)
+            .isVerified(false)
             .build();
 
-        boolean uploadSuccess = awsService.uploadFile(key, dto.getFile());
+        try {
+            // Original upload check
+            // boolean uploadSuccess = awsService.uploadFile(key, dto.getFile());
 
-        if (uploadSuccess) {
-            Charity registeredCharity = charityRepository.save(charity);
-            log.info("Charity saved: {}", registeredCharity);
-            CharityDto saved = convert(registeredCharity);
-            awsService.pubMessageToAdmin(saved);
-            return saved;
-        } else {
-            throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Cannot upload file");
+            // New upload check that works with or without file
+            boolean uploadSuccess = dto.getFile() == null || awsService.uploadFile(key, dto.getFile());
+
+            if (uploadSuccess) {
+                Charity registeredCharity = charityRepository.save(charity);
+                log.info("Charity saved: {}", registeredCharity);
+                CharityDto saved = convert(registeredCharity);
+                awsService.pubMessageToAdmin(saved);
+                return saved;
+            } else {
+                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload charity image");
+            }
+        } catch (Exception e) {
+            log.error("Error registering charity: {}", e.getMessage(), e);
+            throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to register charity: " + e.getMessage());
         }
     }
 
@@ -112,7 +146,7 @@ public class CharityService {
 
     public List<CharityDto> getApprovedCharities() {
         return charityRepository.findAll().stream()
-            .filter(Charity::isApproved)
+            .filter(charity -> charity.getIsVerified())
             .map(this::convert)
             .collect(Collectors.toList());
     }
@@ -120,7 +154,7 @@ public class CharityService {
     public boolean approveCharity(long id) {
         Optional<Charity> charityOptional = charityRepository.findById(id);
         charityOptional.ifPresent(charity -> {
-            charity.setApproved(true);
+            charity.setIsVerified(true);
             charityRepository.save(charity);
         });
         return charityOptional.isPresent();
@@ -147,96 +181,83 @@ public class CharityService {
     }
 
     @Transactional
-    public DonationDto addDonation(String paypalOrderId, UUID donorId, Long charityId, boolean volunteerOptIn) {
-        log.info("Processing PayPal donation with order ID: {}, donor: {}, charity: {}", paypalOrderId, donorId, charityId);
+    public DonationDto addDonation(DonationDto donationDto) {
+        User donor = userRepository.findById(donationDto.getDonorId())
+                .orElseThrow(() -> new CharityException("Donor not found"));
+        Charity charity = charityRepository.findById(donationDto.getCharityId())
+                .orElseThrow(() -> new CharityException("Charity not found"));
 
-        try {
-            // Get PayPal HTTP client and order details
-            PayPalHttpClient client = payPalConfig.getPayPalClient();
-            HttpResponse<com.paypal.orders.Order> response = client.execute(new com.paypal.orders.OrdersGetRequest(paypalOrderId));
-            com.paypal.orders.Order order = response.result();
+        Donation donation = new Donation();
+        donation.setPaypalOrderId(donationDto.getPaypalOrderId());
+        donation.setDonor(donor);
+        donation.setCharity(charity);
+        donation.setAmount(donationDto.getAmount());
+        donation.setStatus(Donation.DonationStatus.PENDING);
+        donation.setCreatedAt(LocalDateTime.now());
 
-            if (!"COMPLETED".equals(order.status())) {
-                throw new IllegalStateException("Payment not completed. Status: " + order.status());
-            }
+        Donation savedDonation = donationRepository.save(donation);
 
-            PaymentDetails details = extractPaymentDetails(order);
-            UserProfile donor = userProfileRepository.findById(donorId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Donor not found with ID: " + donorId));
-            Charity charity = charityRepository.findById(charityId)
-                    .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + charityId));
-
-            Donation donation = Donation.builder()
-                .paypalId(paypalOrderId)
-                .amount(details.getAmount())
-                .email(details.getEmail())
-                .status("COMPLETED") 
-                .paymentDate(new Date())
-                .currencyCode(details.getCurrencyCode())
-                .volunteerOptIn(volunteerOptIn)
-                .donorId(donor.getUserProfileid()) 
-                .charityId(charity.getId()) 
+        return DonationDto.builder()
+                .id(savedDonation.getId())
+                .paypalOrderId(savedDonation.getPaypalOrderId())
+                .donorId(savedDonation.getDonor().getId())
+                .charityId(savedDonation.getCharity().getId())
+                .amount(savedDonation.getAmount())
+                .status(savedDonation.getStatus())
+                .createdAt(savedDonation.getCreatedAt())
                 .build();
-
-            Donation savedDonation = donationRepository.save(donation);
-
-            if (volunteerOptIn) {
-                VolunteerVerification verification = VolunteerVerification.builder()
-                        .volunteer(donor)
-                        .charity(charity)
-                        .status(VerificationStatus.PENDING)
-                        .build();
-                volunteerVerificationRepository.save(verification);
-            }
-
-            return convert(savedDonation);
-        } catch (Exception e) {
-            log.error("Error processing donation: {}", e.getMessage(), e);
-            throw new HttpServerErrorException(HttpStatus.BAD_REQUEST, "Invalid donation data: " + e.getMessage());
-        }
     }
 
     @Transactional
-    public VolunteerVerificationDto submitVerification(Long verificationId, String comments, String status) {
-        VolunteerVerification verification = volunteerVerificationRepository.findById(verificationId)
+    public VerificationDto submitVerification(Long verificationId, String comments, String status) {
+        Verification verification = verificationRepository.findById(verificationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Verification not found with ID: " + verificationId));
 
-        VerificationStatus newStatus = VerificationStatus.valueOf(status.toUpperCase());
+        Verification.VerificationStatus newStatus = Verification.VerificationStatus.valueOf(status.toUpperCase());
         verification.setStatus(newStatus);
-        verification.setComments(comments);
-        verification.setSubmittedAt(new Date());
+        verification.setComment(comments);
+        verification.setReviewedAt(LocalDateTime.now());
 
-        VolunteerVerification updated = volunteerVerificationRepository.save(verification);
+        Verification updated = verificationRepository.save(verification);
         return convertVerification(updated);
     }
 
-    private VolunteerVerificationDto convertVerification(VolunteerVerification verification) {
-        return VolunteerVerificationDto.builder()
-                .id(verification.getId())
-                .volunteerId(verification.getVolunteer().getUserProfileid())
-                .charityId(verification.getCharity().getId())
-                .status(verification.getStatus().name())
-                .comments(verification.getComments())
-                .submittedAt(verification.getSubmittedAt())
-                .build();
+    private VerificationDto convertVerification(Verification verification) {
+        return VerificationDto.builder()
+            .id(verification.getId())
+            .volunteerId(verification.getVolunteer().getId())
+            .volunteerName(verification.getVolunteer().getFullName())
+            .volunteerEmail(verification.getVolunteer().getEmail())
+            .charityId(verification.getCharity().getId())
+            .charityName(verification.getCharity().getName())
+            .proofId(verification.getProof() != null ? verification.getProof().getId() : null)
+            .proofDescription(verification.getProof() != null ? verification.getProof().getDescription() : null)
+            .status(verification.getStatus().name())
+            .comment(verification.getComment())
+            .reviewedAt(verification.getReviewedAt())
+            .build();
     }
-
 
     public List<DonationDto> getDonationsForDonor(UUID donorId) {
         return donationRepository.findByDonorId(donorId)
             .stream()
-            .map(donation -> new DonationDto(
-                donation.getId(),
-                donation.getPaypalId(),
-                donation.getEmail(),
-                donation.getAmount(),
-                donation.getStatus(),
-                donation.getPaymentDate(),
-                donation.getCurrencyCode(),
-                donation.isVolunteerOptIn(),
-                donation.getDonorId(),
-                donation.getCharityId()
-            ))
+            .map(this::convert)
+            .collect(Collectors.toList());
+    }
+
+    public List<CharityDto> getCharitiesByDonor(UUID donorId) {
+        return donationRepository.findByDonorId(donorId)
+            .stream()
+            .map(Donation::getCharity)
+            .distinct()
+            .map(this::convert)
+            .collect(Collectors.toList());
+    }
+
+    public List<CharityDto> getCharitiesByFundraiser(UUID fundraiserId) {
+        return charityRepository.findByFundraiserId(fundraiserId)
+            .stream()
+            .map(this::convert)
             .collect(Collectors.toList());
     }
 

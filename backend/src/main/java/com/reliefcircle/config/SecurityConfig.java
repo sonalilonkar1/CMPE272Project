@@ -1,49 +1,52 @@
 package com.reliefcircle.config;
 
 import com.reliefcircle.service.CustomOAuth2UserService;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
-import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
+public class SecurityConfig {
 
-    private final OAuth2UserService<OidcUserRequest, OidcUser> customOAuth2UserService;
+    @Autowired
+    private CustomOAuth2UserService customOAuth2UserService;
 
-    public SecurityConfig(CustomOAuth2UserService customOAuth2UserService) {
-        this.customOAuth2UserService = customOAuth2UserService;
-    }
-
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-            .csrf().disable() // CSRF disabled for REST API
-            .authorizeRequests(authorizeRequests ->
+            .csrf().disable()
+            .authorizeHttpRequests(authorizeRequests ->
                 authorizeRequests
-                    .antMatchers("/api/authenticate", "/api/users/register").permitAll()
-                    .antMatchers("/api/charities/*/approve").hasAuthority("ROLE_ADMIN")
+                    .requestMatchers("/oauth2/**", "/login/**").permitAll()
+                    .requestMatchers("/api/authenticate").permitAll()
+                    .requestMatchers("/api/charities", "/api/charities/approved").permitAll()
+                    .requestMatchers("/api/charities/*/approve").hasAuthority("SCOPE_admin")
                     .anyRequest().authenticated()
             )
-            .oauth2Login(oauth2Login ->
-                oauth2Login
-                    .userInfoEndpoint(userInfo ->
-                        userInfo.oidcUserService(customOAuth2UserService)
-                    )
-                    .defaultSuccessUrl("/api/donations", true)
-                    .failureUrl("/api/authenticate?error=true")
+            .oauth2Login(oauth2 -> oauth2
+                .userInfoEndpoint(userInfo -> userInfo
+                    .oidcUserService(customOAuth2UserService)
+                )
+                .defaultSuccessUrl("/api/auth/me", true)
             )
-            .logout(logout ->
-                logout
-                    .logoutUrl("/logout") // Explicitly set to /logout
-                    .logoutSuccessUrl("/api/authenticate")
-                    .invalidateHttpSession(true) // Clear session
-                    .deleteCookies("JSESSIONID") // Remove session cookie
-                    .permitAll()
-            );
+            .sessionManagement(session -> session
+                .maximumSessions(1)
+                .expiredUrl("/login?expired")
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2.jwt());
+
+        return http.build();
+    }
+
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        return NimbusJwtDecoder.withJwkSetUri("https://www.googleapis.com/oauth2/v3/certs").build();
     }
 }

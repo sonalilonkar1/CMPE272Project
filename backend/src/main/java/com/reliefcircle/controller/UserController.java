@@ -7,8 +7,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import com.reliefcircle.model.UserProfile;
-import com.reliefcircle.service.UserProfileService;
+import com.reliefcircle.model.User;
+import com.reliefcircle.service.UserService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -22,13 +22,13 @@ import java.util.UUID;
 @RestController
 @RequestMapping("/api/users")
 @CrossOrigin("*")
-public class UserProfileController {
+public class UserController {
     
-    private final UserProfileService userProfileService;
+    private final UserService UserService;
     
     @Autowired
-    public UserProfileController(UserProfileService userProfileService) {
-        this.userProfileService = userProfileService;
+    public UserController(UserService UserService) {
+        this.UserService = UserService;
     }
     
     /**
@@ -37,32 +37,32 @@ public class UserProfileController {
      * @return List of user profiles
      */
     @GetMapping
-    public ResponseEntity<List<UserProfile>> getUserProfiles() {
+    public ResponseEntity<List<User>> getUsers() {
         log.info("Fetching all user profiles");
-        List<UserProfile> profiles = userProfileService.getAllUserProfiles();
+        List<User> profiles = UserService.getAllUsers();
         return ResponseEntity.ok(profiles);
     }
     
     /**
      * Uploads a profile image for a specific user
      * 
-     * @param userProfileId The ID of the user profile
+     * @param userId The ID of the user profile
      * @param file The image file to upload
      * @return Response with success/error message
      */
     @PostMapping(
-            path = "/{userProfileId}/image/upload",
+            path = "/{userId}/image/upload",
             consumes = MediaType.MULTIPART_FORM_DATA_VALUE,
             produces = MediaType.APPLICATION_JSON_VALUE
     )
-    public ResponseEntity<ImageUploadResponse> uploadUserProfileImage(
-            @PathVariable("userProfileId") UUID userProfileId,
+    public ResponseEntity<ImageUploadResponse> uploadUserImage(
+            @PathVariable("userId") UUID userId,
             @RequestParam("file") MultipartFile file) {
         
-        log.info("Uploading profile image for user: {}", userProfileId);
+        log.info("Uploading profile image for user: {}", userId);
         
         try {
-            userProfileService.uploadUserProfileImage(userProfileId, file);
+            UserService.uploadUserImage(userId, file);
             
             ImageUploadResponse response = new ImageUploadResponse(
                     true,
@@ -71,7 +71,7 @@ public class UserProfileController {
             
             return ResponseEntity.status(HttpStatus.CREATED).body(response);
         } catch (Exception e) {
-            log.error("Error uploading image for user {}: {}", userProfileId, e.getMessage(), e);
+            log.error("Error uploading image for user {}: {}", userId, e.getMessage(), e);
             
             ImageUploadResponse response = new ImageUploadResponse(
                     false,
@@ -85,25 +85,25 @@ public class UserProfileController {
     /**
      * Downloads a profile image for a specific user
      * 
-     * @param userProfileId The ID of the user profile
+     * @param userId The ID of the user profile
      * @return The profile image bytes with appropriate content type
      */
     @GetMapping(
-            path = "/{userProfileId}/image/download",
+            path = "/{userId}/image/download",
             produces = MediaType.IMAGE_JPEG_VALUE
     )
-    public ResponseEntity<byte[]> downloadUserProfileImage(
-            @PathVariable("userProfileId") UUID userProfileId) {
+    public ResponseEntity<byte[]> downloadUserImage(
+            @PathVariable("userId") UUID userId) {
         
-        log.info("Downloading profile image for user: {}", userProfileId);
+        log.info("Downloading profile image for user: {}", userId);
         
         try {
-            byte[] imageData = userProfileService.downloadUserProfileImage(userProfileId);
+            byte[] imageData = UserService.downloadUserImage(userId);
             return ResponseEntity.ok()
                     .contentType(MediaType.IMAGE_JPEG)
                     .body(imageData);
         } catch (Exception e) {
-            log.error("Error downloading image for user {}: {}", userProfileId, e.getMessage(), e);
+            log.error("Error downloading image for user {}: {}", userId, e.getMessage(), e);
             return ResponseEntity.notFound().build();
         }
     }

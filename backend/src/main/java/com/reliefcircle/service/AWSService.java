@@ -87,7 +87,7 @@ public class AWSService {
             PublishRequest request = new PublishRequest()
                     .withMessage("Charity Info: " + charityDto.toString())
                     .withTopicArn(snsTopic)
-                    .withSubject("Charity Registration: " + charityDto.getCname());
+                    .withSubject("Charity Registration: " + charityDto.getName());
             
             PublishResult result = snsClient.publish(request);
             log.info("SNS Message sent. Message ID: {}", result.getMessageId());
