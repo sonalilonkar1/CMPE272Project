@@ -11,8 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpServerErrorException;
 import com.reliefcircle.exception.ResourceNotFoundException;
 import com.paypal.orders.Order;
-import com.paypal.core.PayPalHttpClient;
-import com.paypal.http.HttpResponse;
 import com.reliefcircle.config.PayPalConfig;
 import com.reliefcircle.dto.CharityDto;
 import com.reliefcircle.dto.DonationDto;
@@ -80,6 +78,8 @@ public class CharityService {
             .charityId(donation.getCharity().getId())
             .charityName(donation.getCharity().getName())
             .amount(donation.getAmount())
+            .paymentStatus(donation.getPaymentStatus())
+            .transactionId(donation.getTransactionId())
             .status(donation.getStatus())
             .createdAt(donation.getCreatedAt())
             .build();
@@ -160,6 +160,7 @@ public class CharityService {
         return charityOptional.isPresent();
     }
 
+    @Transactional
     public List<DonationDto> getDonations() {
         return donationRepository.findAll().stream()
             .map(this::convert)
@@ -187,13 +188,14 @@ public class CharityService {
         Charity charity = charityRepository.findById(donationDto.getCharityId())
                 .orElseThrow(() -> new CharityException("Charity not found"));
 
-        Donation donation = new Donation();
-        donation.setPaypalOrderId(donationDto.getPaypalOrderId());
-        donation.setDonor(donor);
-        donation.setCharity(charity);
-        donation.setAmount(donationDto.getAmount());
-        donation.setStatus(Donation.DonationStatus.PENDING);
-        donation.setCreatedAt(LocalDateTime.now());
+        Donation donation = Donation.builder()
+            .paypalOrderId(donationDto.getPaypalOrderId())
+            .donor(donor)
+            .charity(charity)
+            .amount(donationDto.getAmount())
+            .status(Donation.DonationStatus.PENDING)
+            .createdAt(LocalDateTime.now())
+            .build();
 
         Donation savedDonation = donationRepository.save(donation);
 
@@ -238,6 +240,7 @@ public class CharityService {
             .build();
     }
 
+    @Transactional
     public List<DonationDto> getDonationsForDonor(UUID donorId) {
         return donationRepository.findByDonorId(donorId)
             .stream()
