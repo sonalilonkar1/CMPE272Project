@@ -264,4 +264,10 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    public CharityDto getCharityById(Long id) {
+        return charityRepository.findById(id)
+            .map(this::convert)
+            .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + id));
+    }
+
 }

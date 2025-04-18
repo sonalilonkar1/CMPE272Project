@@ -64,6 +64,16 @@ public class CharityController {
     }
     
     /**
+     * Get a charity by ID
+     * @param id Charity ID
+     * @return The charity with the specified ID
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<CharityDto> getCharityById(@PathVariable("id") long id) {
+        return ResponseEntity.ok(charityService.getCharityById(id));
+    }
+    
+    /**
      * Verify a charity by ID
      * @param id Charity ID
      * @return Success/failure response
