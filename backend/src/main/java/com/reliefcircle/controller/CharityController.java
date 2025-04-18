@@ -55,27 +55,27 @@ public class CharityController {
     }
     
     /**
-     * Get only approved charities
-     * @return List of approved charities
+     * Get only verified charities
+     * @return List of verified charities
      */
-    @GetMapping("/approved")
-    public ResponseEntity<List<CharityDto>> getApprovedCharities() {
-        return ResponseEntity.ok(charityService.getApprovedCharities());
+    @GetMapping("/verified")
+    public ResponseEntity<List<CharityDto>> getVerifiedCharities() {
+        return ResponseEntity.ok(charityService.getVerifiedCharities());
     }
     
     /**
-     * Approve a charity by ID
+     * Verify a charity by ID
      * @param id Charity ID
      * @return Success/failure response
      */
-    @PutMapping("/{id}/approve")
-    public ResponseEntity<String> approveCharity(@PathVariable("id") long id) {
-        boolean success = charityService.approveCharity(id);
+    @PutMapping("/{id}/verify")
+    public ResponseEntity<String> verifyCharity(@PathVariable("id") long id) {
+        boolean success = charityService.verifyCharity(id);
         if (success) {
-            return ResponseEntity.ok("Charity approved successfully");
+            return ResponseEntity.ok("Charity verified successfully");
         } else {
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body("Charity not found or could not be approved");
+                    .body("Charity not found or could not be verified");
         }
     }
     

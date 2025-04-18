@@ -144,14 +144,14 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
-    public List<CharityDto> getApprovedCharities() {
+    public List<CharityDto> getVerifiedCharities() {
         return charityRepository.findAll().stream()
             .filter(charity -> charity.getIsVerified())
             .map(this::convert)
             .collect(Collectors.toList());
     }
 
-    public boolean approveCharity(long id) {
+    public boolean verifyCharity(long id) {
         Optional<Charity> charityOptional = charityRepository.findById(id);
         charityOptional.ifPresent(charity -> {
             charity.setIsVerified(true);
