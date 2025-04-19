@@ -26,8 +26,8 @@ public class SecurityConfig {
                 authorizeRequests
                     .requestMatchers("/oauth2/**", "/login/**").permitAll()
                     .requestMatchers("/api/authenticate").permitAll()
-                    .requestMatchers("/api/charities", "/api/charities/approved").permitAll()
-                    .requestMatchers("/api/charities/*/approve").hasAuthority("SCOPE_admin")
+                    .requestMatchers("/api/charities", "/api/charities/verified").permitAll()
+                    .requestMatchers("/api/charities/*/verify").hasAuthority("SCOPE_admin")
                     .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2

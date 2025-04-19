@@ -8,7 +8,6 @@ import lombok.Setter;
 import lombok.ToString;
 
 import jakarta.persistence.*;
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @AllArgsConstructor
@@ -25,25 +24,32 @@ public class Donation {
     private Long id;
 
     @Column(nullable = false)
-    private String paypalOrderId;
+    private Double amount;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "donor_id", nullable = false)
-    private User donor;
+    @Column(name = "payment_status", nullable = true)
+    private String paymentStatus;
+
+    @Column(name = "transaction_id", nullable = true)
+    private String transactionId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "charity_id", nullable = false)
     private Charity charity;
 
-    @Column(nullable = false)
-    private Double amount;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "donor_id", nullable = false)
+    private User donor;
+
+    @Column(name = "created_at", nullable = true)
+    private LocalDateTime createdAt;
+
+    @Column(name = "paypal_order_id", nullable = true)
+    private String paypalOrderId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DonationStatus status;
-
-    @Column(nullable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = true)
+    @Builder.Default
+    private DonationStatus status = DonationStatus.PENDING;
 
     public enum DonationStatus {
         PENDING,

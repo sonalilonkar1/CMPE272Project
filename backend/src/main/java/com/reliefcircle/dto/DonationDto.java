@@ -22,6 +22,8 @@ public class DonationDto {
     private Long charityId;
     private String charityName;
     private Double amount;
+    private String paymentStatus;
+    private String transactionId;
     private Donation.DonationStatus status;
     private LocalDateTime createdAt;
 
@@ -32,6 +34,8 @@ public class DonationDto {
         dto.setDonorId(donation.getDonor().getId());
         dto.setCharityId(donation.getCharity().getId());
         dto.setAmount(donation.getAmount());
+        dto.setPaymentStatus(donation.getPaymentStatus());
+        dto.setTransactionId(donation.getTransactionId());
         dto.setStatus(donation.getStatus());
         dto.setCreatedAt(donation.getCreatedAt());
         return dto;
