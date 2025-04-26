@@ -21,7 +21,6 @@ import java.util.UUID;
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
-@CrossOrigin("*")
 public class UserController {
     
     private final UserService UserService;

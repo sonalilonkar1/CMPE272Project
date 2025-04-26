@@ -1,32 +1,33 @@
 package com.reliefcircle.controller;
 
 import com.reliefcircle.dto.DonationDto;
+import com.reliefcircle.dto.PaginatedResponse;
+import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.model.User;
 import com.reliefcircle.dto.VerificationDto;
 import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import java.util.UUID;
-import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.core.Authentication;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+
+@Validated
 @Slf4j
 @RestController
 @RequestMapping("/api/donations")
-@CrossOrigin(origins = "*")
 public class DonationController {
     
     private final CharityService charityService;
@@ -41,17 +42,33 @@ public class DonationController {
     /**
      * Get all donations with optional filtering by donorId
      * @param donorId Optional donor ID to filter donations
-     * @return List of donations based on the provided filter
+     * @param paginationRequest Pagination parameters
+     * @return Paginated list of donations based on the provided filter
      */
     @GetMapping
-    public ResponseEntity<List<DonationDto>> getDonations(
-            @RequestParam(required = false) UUID donorId) {
+    public ResponseEntity<PaginatedResponse<DonationDto>> getDonations(
+            @RequestParam(required = false) UUID donorId,
+            @Valid PaginationRequest paginationRequest) {
         
+        Page<DonationDto> page;
         if (donorId != null) {
-            return ResponseEntity.ok(charityService.getDonationsForDonor(donorId));
+            page = charityService.getDonationsForDonor(donorId, 
+                PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
         } else {
-            return ResponseEntity.ok(charityService.getDonations());
+            page = charityService.getDonations(
+                PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
         }
+
+        PaginatedResponse<DonationDto> response = PaginatedResponse.<DonationDto>builder()
+            .content(page.getContent())
+            .pageNumber(page.getNumber())
+            .pageSize(page.getSize())
+            .totalElements(page.getTotalElements())
+            .totalPages(page.getTotalPages())
+            .last(page.isLast())
+            .build();
+
+        return ResponseEntity.ok(response);
     }
     
     /**
@@ -62,7 +79,7 @@ public class DonationController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DonationDto> addDonation(
-            @RequestBody DonationDto request,
+            @Valid @RequestBody DonationDto request,
             Authentication authentication) {
         OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
         User donor = UserRepository.findByExternalId(oidcUser.getSubject())
@@ -75,9 +92,9 @@ public class DonationController {
 
     @PostMapping("/{verificationId}/verify")
     public ResponseEntity<VerificationDto> submitVerification(
-            @PathVariable("verificationId") Long verificationId,
-            @RequestParam("comments") String comments,
-            @RequestParam("status") String status) {
+            @PathVariable("verificationId") @Positive(message = "Verification ID must be positive") Long verificationId,
+            @RequestParam("comments") @NotBlank(message = "Comments are required") String comments,
+            @RequestParam("status") @NotBlank(message = "Status is required") String status) {
         VerificationDto verification = charityService.submitVerification(verificationId, comments, status);
         return ResponseEntity.ok(verification);
     }

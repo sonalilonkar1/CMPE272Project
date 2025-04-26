@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -144,11 +146,21 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    public Page<CharityDto> getAllCharities(PageRequest pageRequest) {
+        return charityRepository.findAll(pageRequest)
+            .map(this::convert);
+    }
+
     public List<CharityDto> getVerifiedCharities() {
         return charityRepository.findAll().stream()
             .filter(charity -> charity.getIsVerified())
             .map(this::convert)
             .collect(Collectors.toList());
+    }
+
+    public Page<CharityDto> getVerifiedCharities(PageRequest pageRequest) {
+        return charityRepository.findByIsVerified(true, pageRequest)
+            .map(this::convert);
     }
 
     public boolean verifyCharity(long id) {
@@ -165,6 +177,12 @@ public class CharityService {
         return donationRepository.findAll().stream()
             .map(this::convert)
             .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Page<DonationDto> getDonations(PageRequest pageRequest) {
+        return donationRepository.findAll(pageRequest)
+            .map(this::convert);
     }
 
     /**
@@ -248,6 +266,12 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    @Transactional
+    public Page<DonationDto> getDonationsForDonor(UUID donorId, PageRequest pageRequest) {
+        return donationRepository.findByDonorId(donorId, pageRequest)
+            .map(this::convert);
+    }
+
     public List<CharityDto> getCharitiesByDonor(UUID donorId) {
         return donationRepository.findByDonorId(donorId)
             .stream()
@@ -257,11 +281,21 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    public Page<CharityDto> getCharitiesByDonor(UUID donorId, PageRequest pageRequest) {
+        return charityRepository.findDistinctByDonorId(donorId, pageRequest)
+            .map(this::convert);
+    }
+
     public List<CharityDto> getCharitiesByFundraiser(UUID fundraiserId) {
         return charityRepository.findByFundraiserId(fundraiserId)
             .stream()
             .map(this::convert)
             .collect(Collectors.toList());
+    }
+
+    public Page<CharityDto> getCharitiesByFundraiser(UUID fundraiserId, PageRequest pageRequest) {
+        return charityRepository.findByFundraiserId(fundraiserId, pageRequest)
+            .map(this::convert);
     }
 
     public CharityDto getCharityById(Long id) {
