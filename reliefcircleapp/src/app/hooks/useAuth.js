@@ -1,26 +1,36 @@
 'use client'
-import { useSession, signIn, signOut } from 'next-auth/react'
+import { useSession, signOut } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 
 export function useAuth() {
   const { data: session, status } = useSession()
   const router = useRouter()
-
-  const handleSignIn = async () => {
-    await signIn('okta', { callbackUrl: '/' })
+  
+  const isAuthenticated = status === 'authenticated' && !!session
+  const isLoading = status === 'loading'
+  
+  const logout = () => {
+    signOut({ callbackUrl: '/login' })
   }
-
-  const handleSignOut = async () => {
-    await signOut({ callbackUrl: '/' })
+  
+  const redirectToLogin = () => {
+    router.push('/login')
   }
-
+  
+  const hasRole = (requiredRole) => {
+    if (!session || !session.user) return false
+    return session.user.role === requiredRole
+  }
+  
   return {
     session,
     status,
-    isAuthenticated: status === 'authenticated',
-    isLoading: status === 'loading',
-    signIn: handleSignIn,
-    signOut: handleSignOut,
-    user: session?.user
+    isAuthenticated,
+    isLoading,
+    logout,
+    redirectToLogin,
+    hasRole,
+    user: session?.user || null,
+    accessToken: session?.accessToken || null,
   }
 } 

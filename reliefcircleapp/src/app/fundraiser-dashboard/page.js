@@ -1,6 +1,8 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
+import { fetchFundraiserCharities } from '@/redux/features/charitiesSlice'
 
 // Mock data - replace with actual API data
 const mockCharities = [
@@ -37,7 +39,18 @@ const mockCharities = [
 ]
 
 export default function FundraiserDashboard() {
+  const dispatch = useDispatch()
   const [activeTab, setActiveTab] = useState('overview')
+  const { fundraiserCharities, status, error } = useSelector((state) => state.charities)
+
+  // Mock fundraiser ID - replace with actual ID from your auth system
+  const fundraiserId = '2770e3eb-c16c-4662-b24e-a5c689929848'
+
+  useEffect(() => {
+    if (activeTab === 'charities') {
+      dispatch(fetchFundraiserCharities(fundraiserId))
+    }
+  }, [dispatch, activeTab, fundraiserId])
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -137,43 +150,57 @@ export default function FundraiserDashboard() {
                   </Link>
                 </div>
                 <div className="space-y-4">
-                  {mockCharities.map(charity => (
-                    <div key={charity.id} className="p-4 bg-gray-50 rounded-xl">
-                      <div className="flex justify-between items-start mb-3">
-                        <div>
-                          <h3 className="!text-base !mb-1">{charity.name}</h3>
-                          <div className="flex items-center space-x-4 text-sm text-slate-600">
-                            <span>Target: ${charity.targetAmount}</span>
-                            <span>Donors: {charity.donors}</span>
+                  {status === 'loading' ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
+                    </div>
+                  ) : error ? (
+                    <div className="text-center text-red-600 py-4">
+                      {error}
+                    </div>
+                  ) : fundraiserCharities.length === 0 ? (
+                    <div className="text-center text-slate-600 py-8">
+                      No charities found. Create your first charity!
+                    </div>
+                  ) : (
+                    fundraiserCharities.map(charity => (
+                      <div key={charity.id} className="p-4 bg-gray-50 rounded-xl">
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="!text-base !mb-1">{charity.name}</h3>
+                            <div className="flex items-center space-x-4 text-sm text-slate-600">
+                              <span>Target: ${charity.targetAmount}</span>
+                              <span>Donors: {charity.donors || 0}</span>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end space-y-2">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                              ${charity.status === 'Active' ? 'bg-green-100 text-green-800' :
+                                charity.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'}`}>
+                              {charity.status}
+                            </span>
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
+                              ${charity.verificationStatus === 'Verified' ? 'bg-green-100 text-green-800' :
+                                'bg-yellow-100 text-yellow-800'}`}>
+                              {charity.verificationStatus}
+                            </span>
                           </div>
                         </div>
-                        <div className="flex flex-col items-end space-y-2">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                            ${charity.status === 'Active' ? 'bg-green-100 text-green-800' :
-                              charity.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-gray-100 text-gray-800'}`}>
-                            {charity.status}
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-slate-600">
+                            Last updated: {new Date(charity.lastUpdated).toLocaleDateString()}
                           </span>
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                            ${charity.verificationStatus === 'Verified' ? 'bg-green-100 text-green-800' :
-                              'bg-yellow-100 text-yellow-800'}`}>
-                            {charity.verificationStatus}
-                          </span>
+                          <Link 
+                            href={`/charities/${charity.id}`}
+                            className="text-violet-600 hover:text-violet-700 text-sm font-medium"
+                          >
+                            View Details
+                          </Link>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center">
-                        <div className="w-full bg-gray-200 rounded-full h-2.5">
-                          <div 
-                            className="bg-violet-600 h-2.5 rounded-full" 
-                            style={{ width: `${(charity.totalRaised / charity.targetAmount) * 100}%` }}
-                          ></div>
-                        </div>
-                        <span className="ml-4 text-sm text-slate-600">
-                          ${charity.totalRaised} raised
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
               </div>
             )}

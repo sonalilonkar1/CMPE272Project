@@ -1,8 +1,15 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import axios from 'axios'
+import { signIn } from 'next-auth/react'
+
+// API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
 
 export default function Register() {
+  const router = useRouter()
   const [selectedRole, setSelectedRole] = useState('donor')
   const [formData, setFormData] = useState({
     firstName: '',
@@ -13,6 +20,8 @@ export default function Register() {
     organizationName: '',
     agreeToTerms: false
   })
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target
@@ -22,10 +31,53 @@ export default function Register() {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Form submitted:', { ...formData, role: selectedRole })
+    setError('')
+    setLoading(true)
+
+    // Basic validation
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      setLoading(false)
+      return
+    }
+
+    try {
+      // Send registration data to backend
+      const response = await axios.post(`${API_URL}/auth/register`, {
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+        role: selectedRole,
+        organizationName: selectedRole === 'fundraiser' ? formData.organizationName : null
+      })
+
+      if (response.data && response.data.success) {
+        // Auto login after successful registration
+        const result = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false
+        })
+
+        if (result.error) {
+          // If auto-login fails, redirect to login page
+          router.push('/login?registered=true')
+        } else {
+          // Registration and login successful, redirect to dashboard
+          router.push('/dashboard')
+        }
+      } else {
+        setError(response.data?.message || 'Registration failed')
+        setLoading(false)
+      }
+    } catch (err) {
+      console.error('Registration error:', err)
+      setError(err.response?.data?.message || 'An error occurred during registration')
+      setLoading(false)
+    }
   }
 
   return (
@@ -39,6 +91,12 @@ export default function Register() {
         </div>
 
         <div className="card">
+          {error && (
+            <div className="mb-4 p-3 bg-red-100 text-red-700 rounded-lg text-sm">
+              {error}
+            </div>
+          )}
+
           {/* Role Selector */}
           <div className="mb-6">
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -205,8 +263,9 @@ export default function Register() {
               <button
                 type="submit"
                 className="btn-primary w-full"
+                disabled={loading}
               >
-                Create Account
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>
           </form>
