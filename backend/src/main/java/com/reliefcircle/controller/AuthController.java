@@ -1,52 +1,75 @@
 package com.reliefcircle.controller;
 
-import com.reliefcircle.model.User;
-import com.reliefcircle.repository.UserRepository;
-import com.reliefcircle.service.JwtUserService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.reliefcircle.dto.*;
+import com.reliefcircle.service.AuthService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-
-import java.util.UUID;
+import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 @RestController
 @RequestMapping("/api/auth")
+@RequiredArgsConstructor
 public class AuthController {
 
-    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+    private final AuthService authService;
 
-    @Autowired
-    private UserRepository userRepository;
+    /**
+     * Register a new user using email/password
+     */
+    @PostMapping("/register")
+    public ResponseEntity<AuthResponse> register(@RequestBody RegisterRequest request) {
+        return ResponseEntity.ok(authService.register(request));
+    }
 
-    @Autowired
-    private JwtUserService jwtUserService;
+    /**
+     * Login with email/password
+     */
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody LoginRequest request) {
+        return ResponseEntity.ok(authService.login(request));
+    }
 
-    @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser(Authentication authentication) {
-        try {
-            logger.debug("Authentication type: {}", authentication.getClass().getName());
-            logger.debug("Authentication principal: {}", authentication.getPrincipal());
+    /**
+     * Authenticate using Google OAuth
+     */
+    @PostMapping("/google")
+    public ResponseEntity<AuthResponse> googleAuth(@RequestBody GoogleAuthRequest request) {
+        return ResponseEntity.ok(authService.authenticateGoogle(request));
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<LogoutResponse> logout(HttpServletRequest request, HttpServletResponse response) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            authService.invalidateToken(token);
             
-            if (authentication.getPrincipal() instanceof OidcUser) {
-                OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
-                logger.debug("OIDC User subject: {}", oidcUser.getSubject());
-                
-                return userRepository.findByExternalId(oidcUser.getSubject())
-                    .map(ResponseEntity::ok)
-                    .orElse(ResponseEntity.notFound().build());
-            } else {
-                logger.warn("Unexpected authentication type: {}", authentication.getClass().getName());
-                return ResponseEntity.badRequest().build();
+            // Clear security context
+            SecurityContextHolder.clearContext();
+            
+            // Invalidate HTTP session if exists
+            if (request.getSession(false) != null) {
+                request.getSession().invalidate();
             }
-        } catch (Exception e) {
-            logger.error("Error getting current user", e);
-            return ResponseEntity.badRequest().build();
+            
+            return ResponseEntity.ok(new LogoutResponse("Logged out successfully"));
         }
+        return ResponseEntity.ok(new LogoutResponse("No token provided"));
+    }
+
+}
+
+class LogoutResponse {
+    private String message;
+
+    public LogoutResponse(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }

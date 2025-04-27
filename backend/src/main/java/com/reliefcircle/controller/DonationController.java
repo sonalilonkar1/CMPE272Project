@@ -5,6 +5,7 @@ import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.model.User;
 import com.reliefcircle.dto.VerificationDto;
+import org.springframework.security.core.userdetails.UserDetails;
 import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -81,8 +82,9 @@ public class DonationController {
     public ResponseEntity<DonationDto> addDonation(
             @Valid @RequestBody DonationDto request,
             Authentication authentication) {
-        OidcUser oidcUser = (OidcUser) authentication.getPrincipal();
-        User donor = UserRepository.findByExternalId(oidcUser.getSubject())
+        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+
+        User donor = UserRepository.findByEmail(userDetails.getUsername())
             .orElseThrow(() -> new IllegalStateException("User not found"));
             
         request.setDonorId(donor.getId());

@@ -89,6 +89,7 @@ public class CharityService {
 
     public CharityDto registerCharity(CharityDto dto) {
         log.info("Register Req: {}", dto);
+        System.out.println("Target amount in DTO: " + dto.getTargetAmount());
 
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Charity name is required");
@@ -98,6 +99,11 @@ public class CharityService {
         // if (dto.getFile() == null) {
         //     throw new IllegalArgumentException("Charity image file is required");
         // }
+        User fundraiser = userRepository.findById(dto.getFundraiserId())
+        .orElseThrow(() -> new CharityException("Fundraiser not found"));
+        if (fundraiser.getRole() != User.UserRole.FUNDRAISER) {
+            throw new CharityException("Only users with FUNDRAISER role can create charities");
+        }
 
         // Original key generation
         // String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
@@ -108,14 +114,18 @@ public class CharityService {
             (dto.getName() + "_" + dto.getFile().getOriginalFilename()).replaceAll("\\s+", "_") :
             dto.getName().replaceAll("\\s+", "_");
 
+        BigDecimal targetAmount = dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO;
+        System.out.println("Setting target amount to: " + targetAmount);
+
         Charity charity = Charity.builder()
             .name(dto.getName())
             .description(dto.getDescription() != null ? dto.getDescription() : "")
             .organizationName(dto.getOrganizationName() != null ? dto.getOrganizationName() : "")
             .category(dto.getCategory() != null ? dto.getCategory() : "General")
-            .targetAmount(dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO)
+            .targetAmount(targetAmount)
             .raisedAmount(BigDecimal.ZERO)
             .isVerified(false)
+            .fundraiser(fundraiser)
             .build();
 
         try {
@@ -127,8 +137,10 @@ public class CharityService {
 
             if (uploadSuccess) {
                 Charity registeredCharity = charityRepository.save(charity);
+                System.out.println("Saved charity with target amount: " + registeredCharity.getTargetAmount());
                 log.info("Charity saved: {}", registeredCharity);
                 CharityDto saved = convert(registeredCharity);
+                System.out.println("Converted DTO target amount: " + saved.getTargetAmount());
                 awsService.pubMessageToAdmin(saved);
                 return saved;
             } else {
@@ -221,7 +233,10 @@ public class CharityService {
                 .id(savedDonation.getId())
                 .paypalOrderId(savedDonation.getPaypalOrderId())
                 .donorId(savedDonation.getDonor().getId())
+                .donorName(savedDonation.getDonor().getFullName())
+                .donorEmail(savedDonation.getDonor().getEmail())
                 .charityId(savedDonation.getCharity().getId())
+                .charityName(savedDonation.getCharity().getName())
                 .amount(savedDonation.getAmount())
                 .status(savedDonation.getStatus())
                 .createdAt(savedDonation.getCreatedAt())

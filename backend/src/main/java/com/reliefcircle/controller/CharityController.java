@@ -10,6 +10,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +20,8 @@ import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.exception.CharityException;
 import com.reliefcircle.service.CharityService;
+import com.reliefcircle.model.User;
+import com.reliefcircle.repository.UserRepository;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -30,10 +34,12 @@ import org.springframework.web.multipart.MultipartFile;
 public class CharityController {
     
     private final CharityService charityService;
+    private final UserRepository userRepository;
     
     @Autowired
-    public CharityController(CharityService charityService) {
+    public CharityController(CharityService charityService, UserRepository userRepository) {
         this.charityService = charityService;
+        this.userRepository = userRepository;
     }
     
     /**
@@ -144,16 +150,27 @@ public class CharityController {
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, 
                  produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CharityDto> registerCharity(
+    public ResponseEntity<?> registerCharity(
             @RequestParam("name") @NotBlank(message = "Charity name is required") String name,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "organizationName", required = false) String organizationName,
             @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "targetAmount", required = false) 
                 @Positive(message = "Target amount must be positive") BigDecimal targetAmount,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            Authentication authentication) {
         
         try {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
+                return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Only users with FUNDRAISER role can create charities"));
+            }
+
             CharityDto charityRequest = CharityDto.builder()
                     .name(name)
                     .description(description)
@@ -161,6 +178,7 @@ public class CharityController {
                     .category(category)
                     .targetAmount(targetAmount)
                     .file(file)
+                    .fundraiserId(user.getId())
                     .build();
             
             CharityDto createdCharity = charityService.registerCharity(charityRequest);
@@ -168,5 +186,17 @@ public class CharityController {
         } catch (Exception ex) {
             throw new CharityException("Failed to register charity: " + ex.getMessage(), ex);
         }
+    }
+}
+
+class ErrorResponse {
+    private String message;
+
+    public ErrorResponse(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }
