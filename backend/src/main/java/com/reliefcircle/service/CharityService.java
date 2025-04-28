@@ -319,4 +319,44 @@ public class CharityService {
             .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + id));
     }
 
+    @Transactional
+    public CharityDto updateCharity(Long id, CharityDto dto) {
+        Charity charity = charityRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + id));
+
+        // Update fields if provided
+        if (dto.getName() != null) {
+            charity.setName(dto.getName());
+        }
+        if (dto.getDescription() != null) {
+            charity.setDescription(dto.getDescription());
+        }
+        if (dto.getOrganizationName() != null) {
+            charity.setOrganizationName(dto.getOrganizationName());
+        }
+        if (dto.getCategory() != null) {
+            charity.setCategory(dto.getCategory());
+        }
+        if (dto.getTargetAmount() != null) {
+            charity.setTargetAmount(dto.getTargetAmount());
+        }
+
+        // Handle file upload if provided
+        if (dto.getFile() != null) {
+            String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
+                    .replaceAll("\\s+", "_");
+            boolean uploadSuccess = awsService.uploadFile(key, dto.getFile());
+            if (!uploadSuccess) {
+                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload charity image");
+            }
+        }
+
+        Charity updatedCharity = charityRepository.save(charity);
+        return convert(updatedCharity);
+    }
+
+    public List<User> getDonorsWhoAreVolunteers() {
+        return userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR);
+    }
+
 }

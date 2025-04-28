@@ -11,6 +11,7 @@ import org.springframework.security.core.Authentication;
 import com.reliefcircle.model.User;
 import com.reliefcircle.service.UserService;
 import com.reliefcircle.service.JwtUserService;
+import com.reliefcircle.repository.UserRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -27,11 +28,13 @@ public class UserController {
     
     private final UserService UserService;
     private final JwtUserService jwtUserService;
+    private final UserRepository userRepository;
     
     @Autowired
-    public UserController(UserService UserService, JwtUserService jwtUserService) {
+    public UserController(UserService UserService, JwtUserService jwtUserService, UserRepository userRepository) {
         this.UserService = UserService;
         this.jwtUserService = jwtUserService;
+        this.userRepository = userRepository;
     }
     
     /**
@@ -40,10 +43,19 @@ public class UserController {
      * @return List of user profiles
      */
     @GetMapping
-    public ResponseEntity<List<User>> getUsers() {
+    public ResponseEntity<List<User>> getUsers(Authentication authentication) {
         log.info("Fetching all user profiles");
-        List<User> profiles = UserService.getAllUsers();
-        return ResponseEntity.ok(profiles);
+        
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            if (user.getRole() != User.UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            List<User> profiles = UserService.getAllUsers();
+            return ResponseEntity.ok(profiles);
+        } else {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
     }
     
     /**
@@ -60,9 +72,20 @@ public class UserController {
     )
     public ResponseEntity<ImageUploadResponse> uploadUserImage(
             @PathVariable("userId") UUID userId,
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            Authentication authentication) {
         
         log.info("Uploading profile image for user: {}", userId);
+        
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof User user)) {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
+
+        // Only allow users to upload their own image
+        if (!user.getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         
         try {
             UserService.uploadUserImage(userId, file);
@@ -96,9 +119,20 @@ public class UserController {
             produces = MediaType.IMAGE_JPEG_VALUE
     )
     public ResponseEntity<byte[]> downloadUserImage(
-            @PathVariable("userId") UUID userId) {
+            @PathVariable("userId") UUID userId,
+            Authentication authentication) {
         
         log.info("Downloading profile image for user: {}", userId);
+        
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof User user)) {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
+
+        // Only allow users to download their own image
+        if (!user.getId().equals(userId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
         
         try {
             byte[] imageData = UserService.downloadUserImage(userId);
@@ -130,6 +164,25 @@ public class UserController {
         }
     }
 
+    /**
+     * Get list of donors who are volunteers
+     * @return List of donors who are volunteers
+     */
+    @GetMapping("/donors/volunteers")
+    public ResponseEntity<List<User>> getDonorsWhoAreVolunteers(Authentication authentication) {
+        log.info("Fetching list of donors who are volunteers");
+        
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            List<User> volunteerDonors = userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR);
+            return ResponseEntity.ok(volunteerDonors);
+        } else {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
+    }
     
     /**
      * Inner class for image upload responses

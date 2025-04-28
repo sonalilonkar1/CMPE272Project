@@ -6,9 +6,11 @@ import org.springframework.stereotype.Repository;
 
 import java.util.UUID;
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByExternalId(String externalId);
     Optional<User> findByEmail(String email);
+    List<User> findByRoleAndIsVolunteerTrue(User.UserRole role);
 }

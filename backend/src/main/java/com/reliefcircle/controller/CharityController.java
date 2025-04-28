@@ -187,6 +187,40 @@ public class CharityController {
             throw new CharityException("Failed to register charity: " + ex.getMessage(), ex);
         }
     }
+
+    /**
+     * Update an existing charity
+     * @param id Charity ID
+     * @param dto Updated charity information
+     * @return The updated charity
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<CharityDto> updateCharity(
+            @PathVariable("id") @Positive(message = "Charity ID must be positive") Long id,
+            @Valid @RequestBody CharityDto dto,
+            Authentication authentication) {
+        try {
+            Object principal = authentication.getPrincipal();
+            if (!(principal instanceof User user)) {
+                throw new IllegalArgumentException("Invalid authentication type");
+            }
+
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Check if user is the fundraiser of this charity
+            CharityDto existingCharity = charityService.getCharityById(id);
+            if (!existingCharity.getFundraiserId().equals(user.getId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            CharityDto updatedCharity = charityService.updateCharity(id, dto);
+            return ResponseEntity.ok(updatedCharity);
+        } catch (Exception ex) {
+            throw new CharityException("Failed to update charity: " + ex.getMessage(), ex);
+        }
+    }
 }
 
 class ErrorResponse {
