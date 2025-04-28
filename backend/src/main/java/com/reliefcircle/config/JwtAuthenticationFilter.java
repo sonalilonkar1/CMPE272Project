@@ -10,7 +10,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.authentication.WebAuthenticationDetailsSource;
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
-
+import io.jsonwebtoken.ExpiredJwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,30 +34,37 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         final String jwt;
         final String userEmail;
 
+        // ⛔ Skip filter for login and register requests
+        final String requestPath = request.getServletPath();
+        if (requestPath.startsWith("/api/auth/login") || requestPath.startsWith("/api/auth/register")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             filterChain.doFilter(request, response);
             return;
         }
 
         jwt = authHeader.substring(7);
-        userEmail = jwtService.extractUsername(jwt);
-        System.out.println("JWT contains email: " + userEmail);
-        System.out.println("JWT claims: " + jwtService.getAllClaims(jwt));
+
+        try {
+            userEmail = jwtService.extractUsername(jwt);
+        } catch (ExpiredJwtException e) {
+            System.out.println("Expired JWT detected: " + e.getMessage());
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
             UserDetails userDetails = userDetailsService.loadUserByUsername(userEmail);
             User user = (User) userDetails;
-            System.out.println("Loaded user from database - Email: " + user.getEmail() + ", Role: " + user.getRole());
-            System.out.println("User authorities: " + userDetails.getAuthorities());
-            System.out.println("Authority class: " + userDetails.getAuthorities().iterator().next().getClass().getName());
-            System.out.println("Authority string: " + userDetails.getAuthorities().iterator().next().getAuthority());
             if (jwtService.isTokenValid(jwt, user)) {
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
                         userDetails,
                         null,
                         userDetails.getAuthorities()
                 );
-                System.out.println("Setting authentication with authorities: " + authToken.getAuthorities());
                 authToken.setDetails(
                         new WebAuthenticationDetailsSource().buildDetails(request)
                 );
@@ -66,4 +73,5 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
         filterChain.doFilter(request, response);
     }
+
 }
