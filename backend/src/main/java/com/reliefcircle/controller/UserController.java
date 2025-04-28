@@ -6,9 +6,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
 
 import com.reliefcircle.model.User;
 import com.reliefcircle.service.UserService;
+import com.reliefcircle.service.JwtUserService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -24,10 +26,12 @@ import java.util.UUID;
 public class UserController {
     
     private final UserService UserService;
+    private final JwtUserService jwtUserService;
     
     @Autowired
-    public UserController(UserService UserService) {
+    public UserController(UserService UserService, JwtUserService jwtUserService) {
         this.UserService = UserService;
+        this.jwtUserService = jwtUserService;
     }
     
     /**
@@ -106,6 +110,26 @@ public class UserController {
             return ResponseEntity.notFound().build();
         }
     }
+    
+    /**
+     * Get the current user's information
+     * 
+     * @param authentication The authentication object containing the JWT token
+     * @return The current user's information
+     */
+    @GetMapping("/me")
+    public ResponseEntity<User> getCurrentUser(Authentication authentication) {
+        log.info("Fetching current user information");
+
+        Object principal = authentication.getPrincipal();
+
+        if (principal instanceof User user) {
+            return ResponseEntity.ok(user);
+        } else {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
+    }
+
     
     /**
      * Inner class for image upload responses
