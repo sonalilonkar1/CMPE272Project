@@ -359,4 +359,8 @@ public class CharityService {
         return userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR);
     }
 
+    public Page<User> getDonorsWhoAreVolunteers(PageRequest pageRequest) {
+        return userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR, pageRequest);
+    }
+
 }

@@ -19,9 +19,6 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
-import org.springframework.security.authorization.AuthorizationDecision;
-import org.springframework.security.authorization.AuthorizationManager;
-import org.springframework.security.web.access.intercept.RequestAuthorizationContext;
 
 @Configuration
 @EnableWebSecurity
@@ -62,9 +59,18 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth ->
                 auth.requestMatchers("/api/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/charities/{id}").permitAll()
                 .requestMatchers(HttpMethod.POST, "/api/charities").hasAuthority("ROLE_FUNDRAISER")
-                .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify").hasAuthority("ROLE_ADMIN")
-                    .anyRequest().authenticated()
+                .requestMatchers(HttpMethod.PUT, "/api/charities/*").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/users/donors/volunteers").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
+                .requestMatchers("/api/users").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/users/{userId}/image/**").authenticated()
+                .requestMatchers("/api/users/me").authenticated()
+                .requestMatchers("/api/donations/*/verify").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/**").hasAnyAuthority("ROLE_ADMIN")
+                .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider(userDetailsService(), passwordEncoder()))

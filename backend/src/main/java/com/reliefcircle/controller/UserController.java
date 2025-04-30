@@ -1,26 +1,34 @@
 package com.reliefcircle.controller;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 
 import com.reliefcircle.model.User;
 import com.reliefcircle.service.UserService;
 import com.reliefcircle.service.JwtUserService;
+import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
+import com.reliefcircle.dto.PaginationRequest;
+import com.reliefcircle.dto.PaginatedResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.List;
 import java.util.UUID;
+import jakarta.validation.Valid;
 
 /**
  * REST controller for managing user profiles
  */
+@Validated
 @Slf4j
 @RestController
 @RequestMapping("/api/users")
@@ -29,21 +37,28 @@ public class UserController {
     private final UserService UserService;
     private final JwtUserService jwtUserService;
     private final UserRepository userRepository;
+    private final CharityService charityService;
     
     @Autowired
-    public UserController(UserService UserService, JwtUserService jwtUserService, UserRepository userRepository) {
+    public UserController(UserService UserService, JwtUserService jwtUserService, 
+                         UserRepository userRepository, CharityService charityService) {
         this.UserService = UserService;
         this.jwtUserService = jwtUserService;
         this.userRepository = userRepository;
+        this.charityService = charityService;
     }
     
     /**
-     * Retrieves all user profiles
+     * Retrieves all user profiles with pagination
      * 
-     * @return List of user profiles
+     * @param paginationRequest Pagination parameters
+     * @param authentication The authentication object
+     * @return Paginated list of user profiles
      */
     @GetMapping
-    public ResponseEntity<List<User>> getUsers(Authentication authentication) {
+    public ResponseEntity<PaginatedResponse<User>> getUsers(
+            @Valid PaginationRequest paginationRequest,
+            Authentication authentication) {
         log.info("Fetching all user profiles");
         
         Object principal = authentication.getPrincipal();
@@ -51,8 +66,20 @@ public class UserController {
             if (user.getRole() != User.UserRole.ADMIN) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            List<User> profiles = UserService.getAllUsers();
-            return ResponseEntity.ok(profiles);
+            
+            Page<User> page = UserService.getAllUsers(
+                PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
+
+            PaginatedResponse<User> response = PaginatedResponse.<User>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+
+            return ResponseEntity.ok(response);
         } else {
             throw new IllegalArgumentException("Invalid authentication type");
         }
@@ -166,19 +193,34 @@ public class UserController {
 
     /**
      * Get list of donors who are volunteers
-     * @return List of donors who are volunteers
+     * @param paginationRequest Pagination parameters
+     * @return Paginated list of donors who are volunteers
      */
     @GetMapping("/donors/volunteers")
-    public ResponseEntity<List<User>> getDonorsWhoAreVolunteers(Authentication authentication) {
+    public ResponseEntity<PaginatedResponse<User>> getDonorsWhoAreVolunteers(
+            @Valid PaginationRequest paginationRequest,
+            Authentication authentication) {
         log.info("Fetching list of donors who are volunteers");
         
         Object principal = authentication.getPrincipal();
         if (principal instanceof User user) {
-            if (user.getRole() != User.UserRole.FUNDRAISER) {
+            if (user.getRole() != User.UserRole.FUNDRAISER && user.getRole() != User.UserRole.ADMIN) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
-            List<User> volunteerDonors = userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR);
-            return ResponseEntity.ok(volunteerDonors);
+            
+            Page<User> page = charityService.getDonorsWhoAreVolunteers(
+                PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
+
+            PaginatedResponse<User> response = PaginatedResponse.<User>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+
+            return ResponseEntity.ok(response);
         } else {
             throw new IllegalArgumentException("Invalid authentication type");
         }
