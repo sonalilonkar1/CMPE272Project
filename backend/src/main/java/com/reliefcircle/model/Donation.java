@@ -1,18 +1,14 @@
 package com.reliefcircle.model;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
+
+import jakarta.persistence.*;
+import java.time.LocalDateTime;
 
 @AllArgsConstructor
 @ToString
@@ -21,19 +17,43 @@ import lombok.ToString;
 @Getter
 @Setter
 @Entity
-@Table(name = "donation")
+@Table(name = "donations")
 public class Donation {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @Column(nullable = false)
+    private Double amount;
 
-  @Column(name = "paypal_id", nullable = false)
-  private String paypalId;
+    @Column(name = "payment_status", nullable = true)
+    private String paymentStatus;
 
-  @Column(nullable = false)
-  private String email;
+    @Column(name = "transaction_id", nullable = true)
+    private String transactionId;
 
-  @Column(nullable = false)
-  private double amount;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "charity_id", nullable = false)
+    private Charity charity;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "donor_id", nullable = false)
+    private User donor;
+
+    @Column(name = "created_at", nullable = true)
+    private LocalDateTime createdAt;
+
+    @Column(name = "paypal_order_id", nullable = true)
+    private String paypalOrderId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = true)
+    @Builder.Default
+    private DonationStatus status = DonationStatus.PENDING;
+
+    public enum DonationStatus {
+        PENDING,
+        COMPLETED,
+        FAILED
+    }
 }

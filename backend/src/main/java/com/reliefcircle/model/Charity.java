@@ -7,15 +7,11 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import lombok.ToString;
 
+import jakarta.persistence.*;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
-
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Id;
-import javax.persistence.Table;
-import javax.persistence.UniqueConstraint;
 
 @AllArgsConstructor
 @ToString
@@ -24,45 +20,56 @@ import javax.persistence.UniqueConstraint;
 @Getter
 @Setter
 @Entity
-@Table(name = "charity", uniqueConstraints = @UniqueConstraint(columnNames = "email"))
+@Table(name = "charities")
 public class Charity {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
-  @Id
-  @GeneratedValue(strategy = GenerationType.IDENTITY)
-  private Long id;
+    @ManyToOne
+    @JoinColumn(name = "fundraiser_id")
+    private User fundraiser;
 
-  @Column(name = "charity_name")
-  private String charityName;
+    @Column(nullable = false)
+    private String name;
 
-  @Column(nullable = false)
-  private String email;
+    @Column(name = "organization_name")
+    private String organizationName;
 
-  @Column(nullable = false)
-  private String location;
+    @Column
+    private String description;
 
-  @Column(columnDefinition = "boolean default false", nullable = false)
-  boolean approved;
+    @Column
+    private String category;
 
-  @Column(columnDefinition = "text", nullable = false)
-  String description;
+    @Column(name = "target_amount", precision = 12, scale = 2)
+    private BigDecimal targetAmount;
 
-  @Column(nullable = false)
-  private String fileLink;
-  
-  @Override
-  public boolean equals(Object o) {
-    if (this == o) {
-      return true;
+    @Column(name = "raised_amount", precision = 12, scale = 2)
+    @Builder.Default
+    private BigDecimal raisedAmount = BigDecimal.ZERO;
+
+    @Column(name = "is_verified")
+    @Builder.Default
+    private Boolean isVerified = false;
+
+    @Column(name = "created_at")
+    @Builder.Default
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToMany(mappedBy = "charity", fetch = FetchType.LAZY)
+    private List<Donation> donations;
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Charity charity = (Charity) o;
+        return id.equals(charity.id);
     }
-    if (o == null || getClass() != o.getClass()) {
-      return false;
-    }
-    Charity charity = (Charity) o;
-    return id.equals(charity.id);
-  }
 
-  @Override
-  public int hashCode() {
-    return Objects.hash(id);
-  }
+    @Override
+    public int hashCode() {
+        return Objects.hash(id);
+    }
 }
