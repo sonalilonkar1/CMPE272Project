@@ -9,7 +9,6 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -22,13 +21,13 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
             .csrf().disable()
-            .authorizeHttpRequests(authorizeRequests ->
-                authorizeRequests
-                    .requestMatchers("/oauth2/**", "/login/**").permitAll()
-                    .requestMatchers("/api/authenticate").permitAll()
-                    .requestMatchers("/api/charities", "/api/charities/verified").permitAll()
-                    .requestMatchers("/api/charities/*/verify").hasAuthority("SCOPE_admin")
-                    .anyRequest().authenticated()
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers("/api/proofs/**").permitAll() // ✅ temporarily allow all proofs endpoints
+                .requestMatchers("/oauth2/**", "/login/**").permitAll()
+                .requestMatchers("/api/authenticate").permitAll()
+                .requestMatchers("/api/charities", "/api/charities/verified").permitAll()
+                .requestMatchers("/api/charities/*/verify").hasAuthority("SCOPE_admin")
+                .anyRequest().authenticated()
             )
             .oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(userInfo -> userInfo

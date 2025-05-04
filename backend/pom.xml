@@ -61,6 +61,7 @@
 		<dependency>
 			<groupId>org.projectlombok</groupId>
 		  	<artifactId>lombok</artifactId>
+			<version>1.18.30</version>
 		  	<scope>provided</scope>
 		</dependency>
 		<dependency>
@@ -106,6 +107,21 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-oauth2-resource-server</artifactId>
 		</dependency>
+
+		<!-- AWS SDK for S3 -->
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>s3</artifactId>
+    <version>2.25.19</version> <!-- use latest stable if available -->
+</dependency>
+
+<!-- AWS Core SDK (needed for credentials, region, etc.) -->
+<dependency>
+    <groupId>software.amazon.awssdk</groupId>
+    <artifactId>auth</artifactId>
+    <version>2.25.19</version>
+</dependency>
+
 	</dependencies>
 
 	<build>
@@ -121,15 +137,11 @@
 	            	<fork>true</fork>
 	                <source>17</source>  <!-- Use Java version you're using -->
 	                <target>17</target>
-	                <compilerArgs>
-	                    <arg>--add-exports=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
-	                    <arg>--add-opens=jdk.compiler/com.sun.tools.javac.processing=ALL-UNNAMED</arg>
-	                </compilerArgs>
 	                <annotationProcessorPaths>
 	                    <path>
 	                        <groupId>org.projectlombok</groupId>
 	                        <artifactId>lombok</artifactId>
-	                        <version>1.18.24</version>
+	                        <version>1.18.30</version>
 	                    </path>
 	                </annotationProcessorPaths>
 	            </configuration>
