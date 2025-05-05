@@ -21,7 +21,6 @@ import com.reliefcircle.dto.PaginatedResponse;
 
 import lombok.extern.slf4j.Slf4j;
 
-import java.util.List;
 import java.util.UUID;
 import jakarta.validation.Valid;
 
@@ -80,6 +79,33 @@ public class UserController {
                 .build();
 
             return ResponseEntity.ok(response);
+        } else {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
+    }
+
+    /**
+     * Get a user by their ID
+     * 
+     * @param id The user ID
+     * @param authentication The authentication object
+     * @return The user profile
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<User> getUserById(
+            @PathVariable("id") UUID id,
+            Authentication authentication) {
+        log.info("Fetching user profile with ID: {}", id);
+        
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof User user) {
+            // Only allow users to view their own profile or admins to view any profile
+            if (!user.getId().equals(id) && user.getRole() != User.UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            
+            User foundUser = UserService.getUserById(id);
+            return ResponseEntity.ok(foundUser);
         } else {
             throw new IllegalArgumentException("Invalid authentication type");
         }
