@@ -12,7 +12,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class VerifyCharityLambda implements RequestHandler<APIGatewayProxyRequestEvent, APIGatewayProxyResponseEvent> {
-    private static final String API_BASE_URL = "https://your-api.com/charity"; // Replace with your API URL
+    private static final String API_BASE_URL = "http://localhost:8080/api/charities"; // Replace with your API URL
 
     @Override
     public APIGatewayProxyResponseEvent handleRequest(APIGatewayProxyRequestEvent input, Context context) {
