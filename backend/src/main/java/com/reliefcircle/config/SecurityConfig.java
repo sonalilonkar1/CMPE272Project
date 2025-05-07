@@ -52,36 +52,50 @@ public class SecurityConfig {
         return new JwtAuthenticationFilter(jwtService, userDetailsService());
     }
 
+                         
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth ->
-                auth.requestMatchers("/api/auth/**").permitAll()
+            .authorizeHttpRequests(auth ->auth
+                // Public endpoints
+                .requestMatchers("/api/auth/**", "/api/authenticate", "/oauth2/**", "/login/**").permitAll()
+                .requestMatchers("/api/proofs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities/{id}").permitAll()
+
+                // Charity operations
                 .requestMatchers(HttpMethod.POST, "/api/charities").hasAuthority("ROLE_FUNDRAISER")
                 .requestMatchers(HttpMethod.PUT, "/api/charities/*").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify").hasAuthority("ROLE_ADMIN")
+
+                // User and donation endpoints
                 .requestMatchers("/api/users/donors/volunteers").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
-                .requestMatchers("/api/users").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/users").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/users/{userId}/image/**").authenticated()
                 .requestMatchers("/api/users/me").authenticated()
-                .requestMatchers("/api/donations/*/verify").hasAnyAuthority("ROLE_ADMIN")
-                .requestMatchers("/api/**").hasAnyAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/donations/*/verify").hasAuthority("ROLE_ADMIN")
+
+                // Catch-all admin scope for API
+                .requestMatchers("/api/**").hasAuthority("ROLE_ADMIN")
                 .anyRequest().authenticated()
+        )
+        .oauth2Login(oauth2 -> oauth2
+            .userInfoEndpoint(userInfo -> userInfo
+                .oidcUserService(customOAuth2UserService)
             )
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authenticationProvider(authenticationProvider(userDetailsService(), passwordEncoder()))
-            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-            .build();
-    }
+            .defaultSuccessUrl("/api/auth/me", true)
+        )
+        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+        .authenticationProvider(authenticationProvider(userDetailsService(), passwordEncoder()))
+        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+        .build();
+}
+
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
-
 }
