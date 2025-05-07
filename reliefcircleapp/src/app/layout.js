@@ -1,12 +1,18 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
+import { setupAxiosInterceptors } from '@/lib/auth'
 
 const inter = Inter({ subsets: ['latin'] })
 
+// Set up axios interceptors for auth token handling
+if (typeof window !== 'undefined') {
+  setupAxiosInterceptors()
+}
+
 export const metadata = {
   title: 'ReliefCircle',
-  description: 'A platform connecting charities, donors, and volunteers',
+  description: 'Your trusted platform for charity and fundraising',
 }
 
 export default function RootLayout({ children }) {

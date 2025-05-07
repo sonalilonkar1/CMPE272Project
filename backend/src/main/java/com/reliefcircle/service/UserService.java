@@ -1,5 +1,7 @@
 package com.reliefcircle.service;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,8 +25,8 @@ public class UserService {
     private final UserRepository UserRepository;
     private final FileStore fileStore;
 
-    public List<User> getAllUsers() {
-        return UserRepository.findAll();
+    public Page<User> getAllUsers(Pageable pageable) {
+        return UserRepository.findAll(pageable);
     }
 
     public User getUserById(UUID UserId) {

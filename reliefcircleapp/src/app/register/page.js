@@ -1,12 +1,19 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useDispatch, useSelector } from 'react-redux'
+import { register } from '@/redux/features/authSlice'
+import { signIn } from 'next-auth/react'
+import { Toast } from '@/components/Toast'
 
 export default function Register() {
+  const router = useRouter()
+  const dispatch = useDispatch()
+  const { loading } = useSelector((state) => state.auth)
   const [selectedRole, setSelectedRole] = useState('donor')
   const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
+    fullName: '',
     email: '',
     password: '',
     confirmPassword: '',
@@ -22,14 +29,48 @@ export default function Register() {
     }))
   }
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Form submitted:', { ...formData, role: selectedRole })
+
+    // Basic validation
+    if (formData.password !== formData.confirmPassword) {
+      return
+    }
+
+    try {
+      // Dispatch registration action
+      const result = await dispatch(register({
+        fullName: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        role: selectedRole.toUpperCase(),
+        organizationName: selectedRole === 'fundraiser' ? formData.organizationName : null
+      })).unwrap()
+
+      if (result.token) {
+        // Auto login after successful registration
+        const signInResult = await signIn('credentials', {
+          email: formData.email,
+          password: formData.password,
+          redirect: false
+        })
+
+        if (signInResult.error) {
+          // If auto-login fails, redirect to login page
+          router.push('/login?registered=true')
+        } else {
+          // Registration and login successful, redirect to dashboard
+          router.push('/dashboard')
+        }
+      }
+    } catch (err) {
+      console.error('Registration error:', err)
+    }
   }
 
   return (
     <main className="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Toast />
       <div className="max-w-md w-full space-y-8">
         <div className="text-center">
           <h1 className="text-3xl font-bold text-slate-800">Create an Account</h1>
@@ -63,42 +104,22 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label htmlFor="firstName" className="block text-sm font-medium text-slate-700">
-                  First Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    autoComplete="given-name"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="input-field"
-                    placeholder="Enter your first name"
-                  />
-                </div>
-              </div>
-              <div>
-                <label htmlFor="lastName" className="block text-sm font-medium text-slate-700">
-                  Last Name
-                </label>
-                <div className="mt-1">
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    autoComplete="family-name"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="input-field"
-                    placeholder="Enter your last name"
-                  />
-                </div>
+            <div>
+              <label htmlFor="fullName" className="block text-sm font-medium text-slate-700">
+                Full Name
+              </label>
+              <div className="mt-1">
+                <input
+                  id="fullName"
+                  name="fullName"
+                  type="text"
+                  autoComplete="name"
+                  required
+                  value={formData.fullName}
+                  onChange={handleChange}
+                  className="input-field"
+                  placeholder="Enter your full name"
+                />
               </div>
             </div>
 
@@ -205,8 +226,9 @@ export default function Register() {
               <button
                 type="submit"
                 className="btn-primary w-full"
+                disabled={loading}
               >
-                Create Account
+                {loading ? 'Creating Account...' : 'Create Account'}
               </button>
             </div>
           </form>

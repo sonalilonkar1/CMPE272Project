@@ -10,6 +10,7 @@ import lombok.ToString;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Objects;
 
 @AllArgsConstructor
@@ -55,6 +56,9 @@ public class Charity {
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    @OneToMany(mappedBy = "charity", fetch = FetchType.LAZY)
+    private List<Donation> donations;
 
     @Override
     public boolean equals(Object o) {

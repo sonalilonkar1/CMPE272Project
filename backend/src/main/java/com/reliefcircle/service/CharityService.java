@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -87,6 +89,7 @@ public class CharityService {
 
     public CharityDto registerCharity(CharityDto dto) {
         log.info("Register Req: {}", dto);
+        System.out.println("Target amount in DTO: " + dto.getTargetAmount());
 
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Charity name is required");
@@ -96,6 +99,11 @@ public class CharityService {
         // if (dto.getFile() == null) {
         //     throw new IllegalArgumentException("Charity image file is required");
         // }
+        User fundraiser = userRepository.findById(dto.getFundraiserId())
+        .orElseThrow(() -> new CharityException("Fundraiser not found"));
+        if (fundraiser.getRole() != User.UserRole.FUNDRAISER) {
+            throw new CharityException("Only users with FUNDRAISER role can create charities");
+        }
 
         // Original key generation
         // String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
@@ -106,14 +114,18 @@ public class CharityService {
             (dto.getName() + "_" + dto.getFile().getOriginalFilename()).replaceAll("\\s+", "_") :
             dto.getName().replaceAll("\\s+", "_");
 
+        BigDecimal targetAmount = dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO;
+        System.out.println("Setting target amount to: " + targetAmount);
+
         Charity charity = Charity.builder()
             .name(dto.getName())
             .description(dto.getDescription() != null ? dto.getDescription() : "")
             .organizationName(dto.getOrganizationName() != null ? dto.getOrganizationName() : "")
             .category(dto.getCategory() != null ? dto.getCategory() : "General")
-            .targetAmount(dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO)
+            .targetAmount(targetAmount)
             .raisedAmount(BigDecimal.ZERO)
             .isVerified(false)
+            .fundraiser(fundraiser)
             .build();
 
         try {
@@ -125,8 +137,10 @@ public class CharityService {
 
             if (uploadSuccess) {
                 Charity registeredCharity = charityRepository.save(charity);
+                System.out.println("Saved charity with target amount: " + registeredCharity.getTargetAmount());
                 log.info("Charity saved: {}", registeredCharity);
                 CharityDto saved = convert(registeredCharity);
+                System.out.println("Converted DTO target amount: " + saved.getTargetAmount());
                 awsService.pubMessageToAdmin(saved);
                 return saved;
             } else {
@@ -144,11 +158,21 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    public Page<CharityDto> getAllCharities(PageRequest pageRequest) {
+        return charityRepository.findAll(pageRequest)
+            .map(this::convert);
+    }
+
     public List<CharityDto> getVerifiedCharities() {
         return charityRepository.findAll().stream()
             .filter(charity -> charity.getIsVerified())
             .map(this::convert)
             .collect(Collectors.toList());
+    }
+
+    public Page<CharityDto> getVerifiedCharities(PageRequest pageRequest) {
+        return charityRepository.findByIsVerified(true, pageRequest)
+            .map(this::convert);
     }
 
     public boolean verifyCharity(long id) {
@@ -165,6 +189,12 @@ public class CharityService {
         return donationRepository.findAll().stream()
             .map(this::convert)
             .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public Page<DonationDto> getDonations(PageRequest pageRequest) {
+        return donationRepository.findAll(pageRequest)
+            .map(this::convert);
     }
 
     /**
@@ -203,7 +233,10 @@ public class CharityService {
                 .id(savedDonation.getId())
                 .paypalOrderId(savedDonation.getPaypalOrderId())
                 .donorId(savedDonation.getDonor().getId())
+                .donorName(savedDonation.getDonor().getFullName())
+                .donorEmail(savedDonation.getDonor().getEmail())
                 .charityId(savedDonation.getCharity().getId())
+                .charityName(savedDonation.getCharity().getName())
                 .amount(savedDonation.getAmount())
                 .status(savedDonation.getStatus())
                 .createdAt(savedDonation.getCreatedAt())
@@ -248,6 +281,12 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    @Transactional
+    public Page<DonationDto> getDonationsForDonor(UUID donorId, PageRequest pageRequest) {
+        return donationRepository.findByDonorId(donorId, pageRequest)
+            .map(this::convert);
+    }
+
     public List<CharityDto> getCharitiesByDonor(UUID donorId) {
         return donationRepository.findByDonorId(donorId)
             .stream()
@@ -257,6 +296,11 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    public Page<CharityDto> getCharitiesByDonor(UUID donorId, PageRequest pageRequest) {
+        return charityRepository.findDistinctByDonorId(donorId, pageRequest)
+            .map(this::convert);
+    }
+
     public List<CharityDto> getCharitiesByFundraiser(UUID fundraiserId) {
         return charityRepository.findByFundraiserId(fundraiserId)
             .stream()
@@ -264,10 +308,59 @@ public class CharityService {
             .collect(Collectors.toList());
     }
 
+    public Page<CharityDto> getCharitiesByFundraiser(UUID fundraiserId, PageRequest pageRequest) {
+        return charityRepository.findByFundraiserId(fundraiserId, pageRequest)
+            .map(this::convert);
+    }
+
     public CharityDto getCharityById(Long id) {
         return charityRepository.findById(id)
             .map(this::convert)
             .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + id));
+    }
+
+    @Transactional
+    public CharityDto updateCharity(Long id, CharityDto dto) {
+        Charity charity = charityRepository.findById(id)
+            .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + id));
+
+        // Update fields if provided
+        if (dto.getName() != null) {
+            charity.setName(dto.getName());
+        }
+        if (dto.getDescription() != null) {
+            charity.setDescription(dto.getDescription());
+        }
+        if (dto.getOrganizationName() != null) {
+            charity.setOrganizationName(dto.getOrganizationName());
+        }
+        if (dto.getCategory() != null) {
+            charity.setCategory(dto.getCategory());
+        }
+        if (dto.getTargetAmount() != null) {
+            charity.setTargetAmount(dto.getTargetAmount());
+        }
+
+        // Handle file upload if provided
+        if (dto.getFile() != null) {
+            String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
+                    .replaceAll("\\s+", "_");
+            boolean uploadSuccess = awsService.uploadFile(key, dto.getFile());
+            if (!uploadSuccess) {
+                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload charity image");
+            }
+        }
+
+        Charity updatedCharity = charityRepository.save(charity);
+        return convert(updatedCharity);
+    }
+
+    public List<User> getDonorsWhoAreVolunteers() {
+        return userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR);
+    }
+
+    public Page<User> getDonorsWhoAreVolunteers(PageRequest pageRequest) {
+        return userRepository.findByRoleAndIsVolunteerTrue(User.UserRole.DONOR, pageRequest);
     }
 
 }

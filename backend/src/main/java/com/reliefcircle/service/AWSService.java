@@ -49,7 +49,7 @@ public class AWSService {
         BasicAWSCredentials credentials = new BasicAWSCredentials(awsAccessKeyId, awsSecret);
         this.snsClient = AmazonSNSClientBuilder.standard()
                 .withCredentials(new AWSStaticCredentialsProvider(credentials))
-                .withRegion(Regions.fromName(region))
+                .withRegion(Regions.valueOf(region.toUpperCase()))
                 .build();
     }
     

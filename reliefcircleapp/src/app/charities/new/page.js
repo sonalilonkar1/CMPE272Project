@@ -1,10 +1,17 @@
 'use client'
 import { useState } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { useRouter } from 'next/navigation'
+import { createCharity } from '@/redux/features/charitiesSlice'
 
 export default function NewCharityForm() {
+  const dispatch = useDispatch()
+  const router = useRouter()
+  const { status, error } = useSelector((state) => state.charities)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
+    organizationName: '',
     targetAmount: '',
     category: '',
     location: '',
@@ -22,10 +29,16 @@ export default function NewCharityForm() {
     }
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault()
-    // Handle form submission
-    console.log('Form submitted:', formData)
+    try {
+      const result = await dispatch(createCharity(formData)).unwrap()
+      if (result) {
+        router.push('/fundraiser-dashboard')
+      }
+    } catch (error) {
+      console.error('Failed to create charity:', error)
+    }
   }
 
   const handleChange = (e) => {
@@ -358,9 +371,15 @@ export default function NewCharityForm() {
                 <button
                   type="submit"
                   className="w-full btn-primary"
+                  disabled={status === 'loading'}
                 >
-                  Submit Charity Request
+                  {status === 'loading' ? 'Creating Charity...' : 'Submit Charity Request'}
                 </button>
+                {error && (
+                  <div className="mt-4 p-4 bg-red-50 text-red-600 rounded-xl">
+                    {error}
+                  </div>
+                )}
               </div>
             </form>
           </div>

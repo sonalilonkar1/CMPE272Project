@@ -1,75 +1,132 @@
 package com.reliefcircle.controller;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.multipart.MultipartFile;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
 import com.reliefcircle.dto.CharityDto;
+import com.reliefcircle.dto.PaginatedResponse;
+import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.exception.CharityException;
 import com.reliefcircle.service.CharityService;
+import com.reliefcircle.model.User;
+import com.reliefcircle.repository.UserRepository;
 
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Positive;
+import org.springframework.web.multipart.MultipartFile;
+
+@Validated
 @RestController
 @RequestMapping("/api/charities")
-@CrossOrigin(origins = "*")
 public class CharityController {
     
     private final CharityService charityService;
+    private final UserRepository userRepository;
     
     @Autowired
-    public CharityController(CharityService charityService) {
+    public CharityController(CharityService charityService, UserRepository userRepository) {
         this.charityService = charityService;
+        this.userRepository = userRepository;
     }
     
     /**
      * Get all charities with optional filtering by donorId or fundraiserId
      * @param donorId Optional donor ID to filter charities by donations
      * @param fundraiserId Optional fundraiser ID to filter charities by fundraiser
-     * @return List of charities based on the provided filters
+     * @param paginationRequest Pagination parameters
+     * @param authentication The authentication object (required if donorId or fundraiserId is provided)
+     * @return Paginated list of charities based on the provided filters
      */
     @GetMapping
-    public ResponseEntity<List<CharityDto>> getAllCharities(
+    public ResponseEntity<PaginatedResponse<CharityDto>> getAllCharities(
             @RequestParam(required = false) UUID donorId,
-            @RequestParam(required = false) UUID fundraiserId) {
+            @RequestParam(required = false) UUID fundraiserId,
+            @Valid PaginationRequest paginationRequest,
+            Authentication authentication) {
         
-        if (donorId != null) {
-            return ResponseEntity.ok(charityService.getCharitiesByDonor(donorId));
-        } else if (fundraiserId != null) {
-            return ResponseEntity.ok(charityService.getCharitiesByFundraiser(fundraiserId));
-        } else {
-            return ResponseEntity.ok(charityService.getAllCharities());
+        // Check authentication if donorId or fundraiserId is provided
+        if (donorId != null || fundraiserId != null) {
+            if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
         }
+        
+        Page<CharityDto> page;
+        PageRequest pageRequest = PageRequest.of(
+            paginationRequest.getPageNumber(), 
+            paginationRequest.getPageSize(),
+            Sort.by(
+                paginationRequest.getSortDirection().equals("asc") ? 
+                    Sort.Direction.ASC : Sort.Direction.DESC,
+                paginationRequest.getSortBy() != null ? 
+                    paginationRequest.getSortBy() : "createdAt"
+            )
+        );
+
+        if (donorId != null) {
+            page = charityService.getCharitiesByDonor(donorId, pageRequest);
+        } else if (fundraiserId != null) {
+            page = charityService.getCharitiesByFundraiser(fundraiserId, pageRequest);
+        } else {
+            page = charityService.getAllCharities(pageRequest);
+        }
+
+        PaginatedResponse<CharityDto> response = PaginatedResponse.<CharityDto>builder()
+            .content(page.getContent())
+            .pageNumber(page.getNumber())
+            .pageSize(page.getSize())
+            .totalElements(page.getTotalElements())
+            .totalPages(page.getTotalPages())
+            .last(page.isLast())
+            .build();
+
+        return ResponseEntity.ok(response);
     }
     
     /**
-     * Get only verified charities
-     * @return List of verified charities
+     * Get only verified charities (public endpoint)
+     * @param paginationRequest Pagination parameters
+     * @return Paginated list of verified charities
      */
     @GetMapping("/verified")
-    public ResponseEntity<List<CharityDto>> getVerifiedCharities() {
-        return ResponseEntity.ok(charityService.getVerifiedCharities());
+    public ResponseEntity<PaginatedResponse<CharityDto>> getVerifiedCharities(
+            @Valid PaginationRequest paginationRequest) {
+        Page<CharityDto> page = charityService.getVerifiedCharities(
+            PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
+
+        PaginatedResponse<CharityDto> response = PaginatedResponse.<CharityDto>builder()
+            .content(page.getContent())
+            .pageNumber(page.getNumber())
+            .pageSize(page.getSize())
+            .totalElements(page.getTotalElements())
+            .totalPages(page.getTotalPages())
+            .last(page.isLast())
+            .build();
+
+        return ResponseEntity.ok(response);
     }
-    
+
     /**
-     * Get a charity by ID
+     * Get a charity by ID (public endpoint)
      * @param id Charity ID
      * @return The charity with the specified ID
      */
     @GetMapping("/{id}")
-    public ResponseEntity<CharityDto> getCharityById(@PathVariable("id") long id) {
+    public ResponseEntity<CharityDto> getCharityById(
+            @PathVariable("id") @Positive(message = "Charity ID must be positive") Long id) {
         return ResponseEntity.ok(charityService.getCharityById(id));
     }
     
@@ -79,7 +136,8 @@ public class CharityController {
      * @return Success/failure response
      */
     @PutMapping("/{id}/verify")
-    public ResponseEntity<String> verifyCharity(@PathVariable("id") long id) {
+    public ResponseEntity<String> verifyCharity(
+            @PathVariable("id") @Positive(message = "Charity ID must be positive") Long id) {
         boolean success = charityService.verifyCharity(id);
         if (success) {
             return ResponseEntity.ok("Charity verified successfully");
@@ -101,15 +159,27 @@ public class CharityController {
      */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE, 
                  produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<CharityDto> registerCharity(
-            @RequestParam("name") String name,
+    public ResponseEntity<?> registerCharity(
+            @RequestParam("name") @NotBlank(message = "Charity name is required") String name,
             @RequestParam(value = "description", required = false) String description,
             @RequestParam(value = "organizationName", required = false) String organizationName,
             @RequestParam(value = "category", required = false) String category,
-            @RequestParam(value = "targetAmount", required = false) BigDecimal targetAmount,
-            @RequestParam(value = "file", required = false) MultipartFile file) {
+            @RequestParam(value = "targetAmount", required = false) 
+                @Positive(message = "Target amount must be positive") BigDecimal targetAmount,
+            @RequestParam(value = "file", required = false) MultipartFile file,
+            Authentication authentication) {
         
         try {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            User user = userRepository.findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
+                return ResponseEntity
+                    .status(HttpStatus.FORBIDDEN)
+                    .body(new ErrorResponse("Only users with FUNDRAISER role can create charities"));
+            }
+
             CharityDto charityRequest = CharityDto.builder()
                     .name(name)
                     .description(description)
@@ -117,6 +187,7 @@ public class CharityController {
                     .category(category)
                     .targetAmount(targetAmount)
                     .file(file)
+                    .fundraiserId(user.getId())
                     .build();
             
             CharityDto createdCharity = charityService.registerCharity(charityRequest);
@@ -124,5 +195,53 @@ public class CharityController {
         } catch (Exception ex) {
             throw new CharityException("Failed to register charity: " + ex.getMessage(), ex);
         }
+    }
+
+    /**
+     * Update an existing charity
+     * @param id Charity ID
+     * @param dto Updated charity information
+     * @return The updated charity
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<CharityDto> updateCharity(
+            @PathVariable("id") @Positive(message = "Charity ID must be positive") Long id,
+            @Valid @RequestBody CharityDto dto,
+            Authentication authentication) {
+        try {
+            Object principal = authentication.getPrincipal();
+            if (!(principal instanceof User user)) {
+                throw new IllegalArgumentException("Invalid authentication type");
+            }
+
+            if (user.getRole() != User.UserRole.FUNDRAISER && user.getRole() != User.UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Check if user is the fundraiser of this charity (skip for admin)
+            if (user.getRole() != User.UserRole.ADMIN) {
+                CharityDto existingCharity = charityService.getCharityById(id);
+                if (!existingCharity.getFundraiserId().equals(user.getId())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+
+            CharityDto updatedCharity = charityService.updateCharity(id, dto);
+            return ResponseEntity.ok(updatedCharity);
+        } catch (Exception ex) {
+            throw new CharityException("Failed to update charity: " + ex.getMessage(), ex);
+        }
+    }
+}
+
+class ErrorResponse {
+    private String message;
+
+    public ErrorResponse(String message) {
+        this.message = message;
+    }
+
+    public String getMessage() {
+        return message;
     }
 }
