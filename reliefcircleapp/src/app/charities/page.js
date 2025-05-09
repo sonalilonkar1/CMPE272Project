@@ -83,8 +83,8 @@ export default function Charities() {
 
           <div className="mt-4 text-center">
             <div className="h-4 bg-gray-200 rounded w-48 mx-auto"></div>
+            </div>
           </div>
-        </div>
       </main>
     );
   }
@@ -115,8 +115,8 @@ export default function Charities() {
                       <div className="flex justify-between items-center">
                         <span className="text-sm text-slate-500">Target: ${charity.targetAmount.toLocaleString()}</span>
                         <span className="text-sm text-slate-500">Raised: ${charity.raisedAmount.toLocaleString()}</span>
-                      </div>
-                      
+                  </div>
+
                       <div className="w-full bg-gray-200 rounded-full h-2.5">
                         <div
                           className="bg-violet-600 h-2.5 rounded-full transition-all duration-300"
@@ -126,7 +126,7 @@ export default function Charities() {
                       
                       <div className="text-right">
                         <span className="text-sm font-medium text-violet-600">{progress}%</span>
-                      </div>
+                    </div>
                     </div>
                   </div>
                 </Link>
@@ -134,7 +134,7 @@ export default function Charities() {
                 <div className="px-6 py-4 border-t border-gray-100">
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-slate-500">By: {charity.fundraiserName}</span>
-                    <Link
+                    <Link 
                       href={`/charities/${charity.id}/donate`}
                       className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-colors duration-200"
                     >
@@ -174,7 +174,7 @@ export default function Charities() {
           >
             Next
           </button>
-        </div>
+          </div>
 
         <div className="mt-4 text-center text-sm text-slate-500">
           Showing {charities.length} of {totalElements} charities

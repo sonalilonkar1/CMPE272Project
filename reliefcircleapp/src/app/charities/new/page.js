@@ -34,7 +34,7 @@ export default function NewCharityForm() {
     try {
       const result = await dispatch(createCharity(formData)).unwrap()
       if (result) {
-        router.push('/fundraiser-dashboard')
+        router.push('/fundraiser')
       }
     } catch (error) {
       console.error('Failed to create charity:', error)

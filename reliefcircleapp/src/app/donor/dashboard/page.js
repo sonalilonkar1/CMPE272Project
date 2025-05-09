@@ -58,15 +58,6 @@ export default function Dashboard() {
                 >
                   My Donations
                 </button>
-                <button
-                  onClick={() => setActiveTab('settings')}
-                  className={`w-full text-left px-4 py-2 rounded-xl text-sm font-medium transition-colors
-                    ${activeTab === 'settings' 
-                      ? 'bg-violet-50 text-violet-600' 
-                      : 'text-slate-600 hover:bg-gray-50'}`}
-                >
-                  Settings
-                </button>
               </nav>
             </div>
           </div>

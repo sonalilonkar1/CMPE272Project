@@ -104,22 +104,22 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
+              <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-slate-700">
                 Full Name
-              </label>
-              <div className="mt-1">
-                <input
+                </label>
+                <div className="mt-1">
+                  <input
                   id="fullName"
                   name="fullName"
-                  type="text"
+                    type="text"
                   autoComplete="name"
-                  required
+                    required
                   value={formData.fullName}
-                  onChange={handleChange}
-                  className="input-field"
+                    onChange={handleChange}
+                    className="input-field"
                   placeholder="Enter your full name"
-                />
+                  />
               </div>
             </div>
 
