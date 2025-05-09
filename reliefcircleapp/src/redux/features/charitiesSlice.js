@@ -1,16 +1,20 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axiosInstance from '@/lib/axios';
+import axios from 'axios';
+import { showToast } from '@/components/Toast';
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
 // Async thunk for fetching charities
 export const fetchCharities = createAsyncThunk(
   'charities/fetchCharities',
-  async (_, { rejectWithValue }) => {
+  async ({ page = 0, pageSize = 6 }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get('/charities');
-      // Ensure we're returning an array
-      return Array.isArray(response.data) ? response.data : [];
+      const response = await axios.get(`${API_URL}/charities?page=${page}&pageSize=${pageSize}`);
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to fetch charities');
+      const errorMessage = error.response?.data?.message || 'Failed to fetch charities';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -20,7 +24,11 @@ export const fetchCharityById = createAsyncThunk(
   'charities/fetchCharityById',
   async (charityId, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/charities/${charityId}`);
+      const response = await axios.get(`${API_URL}/charities/${charityId}`, {
+        headers: {
+          'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRE9OT1IiLCJzdWIiOiJ0ZXN0dXNlcjJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDU4NjM4MTEsImV4cCI6MTc0NTk1MDIxMX0.EhEe-STkhRAaE-H8QibTIIV_RDQ4FqSnMlvp2txv0Kc13t_7eNgsAMAKwG6i937vz1TjGzu1g5xUS-pjT8q-3g'
+        }
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch charity details');
@@ -33,10 +41,13 @@ export const createCharity = createAsyncThunk(
   'charities/createCharity',
   async (charityData, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.post('/charities', charityData);
+      const response = await axios.post(`${API_URL}/charities`, charityData);
+      showToast.success('Charity created successfully!');
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to create charity');
+      const errorMessage = error.response?.data?.message || 'Failed to create charity';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
     }
   }
 );
@@ -44,10 +55,10 @@ export const createCharity = createAsyncThunk(
 // Async thunk for fetching fundraiser's charities
 export const fetchFundraiserCharities = createAsyncThunk(
   'charities/fetchFundraiserCharities',
-  async (fundraiserId, { rejectWithValue }) => {
+  async ({ fundraiserId, page = 0, pageSize = 10 }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/charities?fundraiserId=${fundraiserId}`);
-      return Array.isArray(response.data) ? response.data : [];
+      const response = await axios.get(`${API_URL}/charities?fundraiserId=${fundraiserId}&page=${page}&pageSize=${pageSize}`);
+      return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch fundraiser charities');
     }
@@ -58,30 +69,46 @@ const initialState = {
   charities: [],
   currentCharity: null,
   fundraiserCharities: [],
-  status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+  currentPage: 0,
+  totalPages: 0,
+  totalElements: 0,
+  pageSize: 6,
+  loading: false,
   error: null,
+  fundraiserCharitiesPage: 0,
+  fundraiserCharitiesTotalPages: 0,
+  fundraiserCharitiesTotalElements: 0,
+  fundraiserCharitiesPageSize: 10
 };
 
 const charitiesSlice = createSlice({
   name: 'charities',
   initialState,
-  reducers: {},
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    }
+  },
   extraReducers: (builder) => {
     builder
+      // Fetch Charities
       .addCase(fetchCharities.pending, (state) => {
-        state.status = 'loading';
+        state.loading = true;
         state.error = null;
       })
       .addCase(fetchCharities.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        state.charities = action.payload;
-        state.error = null;
+        state.loading = false;
+        state.charities = action.payload.content;
+        state.currentPage = action.payload.pageNumber;
+        state.totalPages = action.payload.totalPages;
+        state.totalElements = action.payload.totalElements;
+        state.pageSize = action.payload.pageSize;
       })
       .addCase(fetchCharities.rejected, (state, action) => {
-        state.status = 'failed';
+        state.loading = false;
         state.error = action.payload;
-        state.charities = [];
       })
+      // Fetch Charity by ID
       .addCase(fetchCharityById.pending, (state) => {
         state.status = 'loading';
         state.error = null;
@@ -97,26 +124,31 @@ const charitiesSlice = createSlice({
         state.error = action.payload;
         state.currentCharity = null;
       })
+      // Create Charity
       .addCase(createCharity.pending, (state) => {
-        state.status = 'loading';
+        state.loading = true;
         state.error = null;
       })
       .addCase(createCharity.fulfilled, (state, action) => {
-        state.status = 'succeeded';
-        state.charities.push(action.payload);
-        state.error = null;
+        state.loading = false;
+        state.charities.unshift(action.payload);
       })
       .addCase(createCharity.rejected, (state, action) => {
-        state.status = 'failed';
+        state.loading = false;
         state.error = action.payload;
       })
+      // Fetch Fundraiser Charities
       .addCase(fetchFundraiserCharities.pending, (state) => {
         state.status = 'loading';
         state.error = null;
       })
       .addCase(fetchFundraiserCharities.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.fundraiserCharities = action.payload;
+        state.fundraiserCharities = action.payload.content;
+        state.fundraiserCharitiesPage = action.payload.pageNumber;
+        state.fundraiserCharitiesTotalPages = action.payload.totalPages;
+        state.fundraiserCharitiesTotalElements = action.payload.totalElements;
+        state.fundraiserCharitiesPageSize = action.payload.pageSize;
         state.error = null;
       })
       .addCase(fetchFundraiserCharities.rejected, (state, action) => {
@@ -124,7 +156,8 @@ const charitiesSlice = createSlice({
         state.error = action.payload;
         state.fundraiserCharities = [];
       });
-  },
+  }
 });
 
+export const { clearError } = charitiesSlice.actions;
 export default charitiesSlice.reducer; 

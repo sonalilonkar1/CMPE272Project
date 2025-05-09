@@ -4,53 +4,33 @@ import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
 import { fetchFundraiserCharities } from '@/redux/features/charitiesSlice'
 
-// Mock data - replace with actual API data
-const mockCharities = [
-  {
-    id: 1,
-    name: "Global Food Bank",
-    status: "Active",
-    totalRaised: 25000,
-    targetAmount: 50000,
-    donors: 150,
-    lastUpdated: "2024-03-15",
-    verificationStatus: "Verified"
-  },
-  {
-    id: 2,
-    name: "Education For All",
-    status: "Pending",
-    totalRaised: 0,
-    targetAmount: 100000,
-    donors: 0,
-    lastUpdated: "2024-03-14",
-    verificationStatus: "Under Review"
-  },
-  {
-    id: 3,
-    name: "Clean Water Initiative",
-    status: "Completed",
-    totalRaised: 75000,
-    targetAmount: 75000,
-    donors: 300,
-    lastUpdated: "2024-03-10",
-    verificationStatus: "Verified"
-  }
-]
+
 
 export default function FundraiserDashboard() {
   const dispatch = useDispatch()
   const [activeTab, setActiveTab] = useState('overview')
-  const { fundraiserCharities, status, error } = useSelector((state) => state.charities)
+  const [page, setPage] = useState(0)
+  const { 
+    fundraiserCharities, 
+    fundraiserCharitiesPage,
+    fundraiserCharitiesTotalPages,
+    fundraiserCharitiesTotalElements,
+    status, 
+    error 
+  } = useSelector((state) => state.charities)
 
   // Mock fundraiser ID - replace with actual ID from your auth system
   const fundraiserId = '2770e3eb-c16c-4662-b24e-a5c689929848'
 
   useEffect(() => {
     if (activeTab === 'charities') {
-      dispatch(fetchFundraiserCharities(fundraiserId))
+      dispatch(fetchFundraiserCharities({ fundraiserId, page }))
     }
-  }, [dispatch, activeTab, fundraiserId])
+  }, [dispatch, activeTab, fundraiserId, page])
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage)
+  }
 
   return (
     <main className="min-h-screen bg-gray-50">
@@ -125,15 +105,17 @@ export default function FundraiserDashboard() {
                 <div className="card">
                   <h2 className="!text-lg !mb-4">Recent Activity</h2>
                   <div className="space-y-4">
-                    {mockCharities.map(charity => (
+                    {fundraiserCharities.map(charity => (
                       <div key={charity.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                         <div>
                           <p className="font-medium text-slate-800">{charity.name}</p>
                           <p className="text-sm text-slate-600">
-                            {charity.status === 'Active' ? 'Raised $' + charity.totalRaised : 'Status: ' + charity.status}
+                            Raised: ${charity.raisedAmount.toLocaleString()}
                           </p>
                         </div>
-                        <span className="text-sm text-slate-600">{charity.lastUpdated}</span>
+                        <span className="text-sm text-slate-600">
+                          {new Date(charity.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -163,43 +145,74 @@ export default function FundraiserDashboard() {
                       No charities found. Create your first charity!
                     </div>
                   ) : (
-                    fundraiserCharities.map(charity => (
-                      <div key={charity.id} className="p-4 bg-gray-50 rounded-xl">
-                        <div className="flex justify-between items-start mb-3">
-                          <div>
-                            <h3 className="!text-base !mb-1">{charity.name}</h3>
-                            <div className="flex items-center space-x-4 text-sm text-slate-600">
-                              <span>Target: ${charity.targetAmount}</span>
-                              <span>Donors: {charity.donors || 0}</span>
+                    <>
+                      {fundraiserCharities.map(charity => (
+                        <div key={charity.id} className="p-4 bg-gray-50 rounded-xl">
+                          <div className="flex justify-between items-start mb-3">
+                            <div>
+                              <h3 className="!text-base !mb-1">{charity.name}</h3>
+                              <div className="flex items-center space-x-4 text-sm text-slate-600">
+                                <span>Target: ${charity.targetAmount.toLocaleString()}</span>
+                                <span>Raised: ${charity.raisedAmount.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <div className="flex flex-col items-end space-y-2">
+                              {charity.isVerified && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Verified
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div className="flex flex-col items-end space-y-2">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                              ${charity.status === 'Active' ? 'bg-green-100 text-green-800' :
-                                charity.status === 'Pending' ? 'bg-yellow-100 text-yellow-800' :
-                                'bg-gray-100 text-gray-800'}`}>
-                              {charity.status}
+                          <div className="flex justify-between items-center">
+                            <span className="text-sm text-slate-600">
+                              Created: {new Date(charity.createdAt).toLocaleDateString()}
                             </span>
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium
-                              ${charity.verificationStatus === 'Verified' ? 'bg-green-100 text-green-800' :
-                                'bg-yellow-100 text-yellow-800'}`}>
-                              {charity.verificationStatus}
-                            </span>
+                            <Link 
+                              href={`/charities/${charity.id}`}
+                              className="text-violet-600 hover:text-violet-700 text-sm font-medium"
+                            >
+                              View Details
+                            </Link>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm text-slate-600">
-                            Last updated: {new Date(charity.lastUpdated).toLocaleDateString()}
-                          </span>
-                          <Link 
-                            href={`/charities/${charity.id}`}
-                            className="text-violet-600 hover:text-violet-700 text-sm font-medium"
+                      ))}
+
+                      {/* Pagination Controls */}
+                      {fundraiserCharitiesTotalPages > 1 && (
+                        <div className="mt-6 flex justify-center items-center space-x-4">
+                          <button
+                            onClick={() => handlePageChange(page - 1)}
+                            disabled={page === 0}
+                            className={`px-4 py-2 rounded-lg ${
+                              page === 0
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-violet-600 text-white hover:bg-violet-700'
+                            }`}
                           >
-                            View Details
-                          </Link>
+                            Previous
+                          </button>
+                          <span className="text-slate-600">
+                            Page {page + 1} of {fundraiserCharitiesTotalPages}
+                          </span>
+                          <button
+                            onClick={() => handlePageChange(page + 1)}
+                            disabled={page === fundraiserCharitiesTotalPages - 1}
+                            className={`px-4 py-2 rounded-lg ${
+                              page === fundraiserCharitiesTotalPages - 1
+                                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                                : 'bg-violet-600 text-white hover:bg-violet-700'
+                            }`}
+                          >
+                            Next
+                          </button>
                         </div>
+                      )}
+
+                      <div className="mt-4 text-center text-sm text-slate-500">
+                        Showing {fundraiserCharities.length} of {fundraiserCharitiesTotalElements} charities
                       </div>
-                    ))
+                    </>
                   )}
                 </div>
               </div>

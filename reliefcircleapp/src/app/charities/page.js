@@ -1,166 +1,185 @@
 'use client'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
 import Image from 'next/image'
 import { fetchCharities } from '@/redux/features/charitiesSlice'
+import { Toast } from '@/components/Toast'
+
+// Loading skeleton component
+const CharityCardSkeleton = () => (
+  <div className="bg-white rounded-lg shadow-md flex flex-col min-h-[280px] animate-pulse">
+    <div className="p-6 pb-3 flex-grow">
+      <div className="h-6 bg-gray-200 rounded w-3/4 mb-4"></div>
+      <div className="space-y-2 mb-4">
+        <div className="h-4 bg-gray-200 rounded w-full"></div>
+        <div className="h-4 bg-gray-200 rounded w-5/6"></div>
+        <div className="h-4 bg-gray-200 rounded w-4/6"></div>
+      </div>
+      <div className="space-y-1">
+        <div className="flex justify-between items-center mb-2">
+          <div className="h-4 bg-gray-200 rounded w-24"></div>
+          <div className="h-4 bg-gray-200 rounded w-24"></div>
+        </div>
+        <div className="w-full bg-gray-200 rounded-full h-2.5"></div>
+        <div className="flex justify-end">
+          <div className="h-4 bg-gray-200 rounded w-12"></div>
+        </div>
+      </div>
+    </div>
+    <div className="px-6 py-4 border-t border-gray-100">
+      <div className="flex justify-between items-center">
+        <div className="h-4 bg-gray-200 rounded w-32"></div>
+        <div className="h-8 bg-gray-200 rounded w-24"></div>
+      </div>
+    </div>
+  </div>
+);
 
 export default function Charities() {
   const dispatch = useDispatch();
-  const { charities, status, error } = useSelector((state) => state.charities);
+  const { charities, currentPage, totalPages, totalElements, pageSize, loading } = useSelector((state) => state.charities);
+  const [page, setPage] = useState(0);
 
   useEffect(() => {
-    dispatch(fetchCharities());
-  }, [dispatch]);
+    dispatch(fetchCharities({ page, size: pageSize }));
+  }, [dispatch, page, pageSize]);
+
+  const handlePageChange = (newPage) => {
+    setPage(newPage);
+  };
 
   // Calculate percentage for progress bar
   const calculateProgress = (raised, target) => {
-    return Math.min((raised / target) * 100, 100);
+    if (!raised || !target) return 0;
+    const percentage = (raised / target) * 100;
+    return Math.min(Math.round(percentage), 100);
   };
 
-  if (status === 'loading' || !charities) {
-    return (
-      <main className="min-h-screen bg-gray-50">
-        <section className="gradient-bg">
-          <div className="container py-12">
-            <h1 className="text-white mb-3">Featured Charities</h1>
-          </div>
-        </section>
-        <section className="section">
-          <div className="container max-w-5xl">
-            <div className="flex items-center justify-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-600"></div>
-            </div>
-          </div>
-        </section>
-      </main>
-    );
-  }
+  // Truncate text helper
+  const truncateText = (text, maxLength) => {
+    if (!text) return '';
+    if (text.length <= maxLength) return text;
+    return text.substr(0, maxLength) + '...';
+  };
 
-  if (status === 'failed') {
+  if (loading) {
     return (
-      <main className="min-h-screen bg-gray-50">
-        <section className="gradient-bg">
-          <div className="container py-12">
-            <h1 className="text-white mb-3">Featured Charities</h1>
+      <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+        <div className="container mx-auto">
+          <h1 className="text-3xl font-bold text-slate-800 mb-8">Charities</h1>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[...Array(6)].map((_, index) => (
+              <CharityCardSkeleton key={index} />
+            ))}
           </div>
-        </section>
-        <section className="section">
-          <div className="container max-w-5xl">
-            <div className="text-center text-red-600">
-              Error: {error?.message || 'Failed to load charities'}
-            </div>
+
+          <div className="mt-8 flex justify-center items-center space-x-4">
+            <div className="h-10 bg-gray-200 rounded w-24"></div>
+            <div className="h-6 bg-gray-200 rounded w-32"></div>
+            <div className="h-10 bg-gray-200 rounded w-24"></div>
           </div>
-        </section>
+
+          <div className="mt-4 text-center">
+            <div className="h-4 bg-gray-200 rounded w-48 mx-auto"></div>
+          </div>
+        </div>
       </main>
     );
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
-      {/* Header Section */}
-      <section className="gradient-bg">
-        <div className="container py-12">
-          <h1 className="text-white mb-3">Featured Charities</h1>
-          <p className="hero-text">
-            Support verified organizations making real impact in communities around the world.
-          </p>
-        </div>
-      </section>
+    <main className="min-h-screen bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
+      <Toast />
+      <div className="container mx-auto">
+        <h1 className="text-3xl font-bold text-slate-800 mb-8">Charities</h1>
 
-      {/* Charities List */}
-      <section className="section">
-        <div className="container max-w-5xl">
-          <div className="space-y-6">
-            {Array.isArray(charities) && charities.map((charity) => (
-              <div key={charity.id} className="card flex flex-col md:flex-row gap-6 !p-6">
-                {/* Image */}
-                <div className="relative w-full md:w-64 h-48 md:h-auto rounded-xl overflow-hidden shrink-0">
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-black/0 z-10" />
-                  {charity.fileUrl ? (
-                    <Image
-                      src={charity.fileUrl}
-                      alt={charity.name}
-                      fill
-                      className="object-cover"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gray-200 flex items-center justify-center">
-                      <span className="text-gray-400">No image available</span>
-                    </div>
-                  )}
-                  {charity.category && (
-                    <div className="absolute bottom-3 left-3 z-20">
-                      <span className="px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full text-white text-xs">
-                        {charity.category}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Content */}
-                <div className="flex-grow space-y-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {charities.map((charity) => {
+            const progress = calculateProgress(charity.raisedAmount, charity.targetAmount);
+            return (
+              <div key={charity.id} className="bg-white rounded-lg shadow-md flex flex-col min-h-[280px] group">
+                <Link href={`/charities/${charity.id}`} className="flex-grow p-6 pb-3 hover:bg-gray-50 transition-colors duration-200">
                   <div>
-                    <div className="flex items-center gap-2 mb-2">
-                      <h3 className="!mb-0">{charity.name}</h3>
-                      {charity.isVerified && (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          Verified
-                        </span>
-                      )}
+                    <h2 className="text-xl font-semibold text-slate-800 mb-2 line-clamp-1 group-hover:text-violet-600 transition-colors duration-200">
+                      {charity.name}
+                    </h2>
+                    <div className="mb-4">
+                      <p className="text-slate-600 line-clamp-3 min-h-[4.5rem]">
+                        {truncateText(charity.description, 120)}
+                      </p>
                     </div>
-                    <p className="text-slate-600 text-sm">{charity.description}</p>
-                    <p className="text-sm text-slate-500 mt-2">
-                      By {charity.fundraiserName} - {charity.organizationName || 'Independent Fundraiser'}
-                    </p>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                      <div>
-                        <span className="text-2xl font-bold text-slate-800">
-                          ${charity.raisedAmount?.toLocaleString()}
-                        </span>
-                        <span className="text-sm text-slate-500 ml-1">
-                          raised of ${charity.targetAmount?.toLocaleString()} goal
-                        </span>
+                    
+                    <div className="space-y-1">
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-slate-500">Target: ${charity.targetAmount.toLocaleString()}</span>
+                        <span className="text-sm text-slate-500">Raised: ${charity.raisedAmount.toLocaleString()}</span>
                       </div>
-                      <span className="text-sm font-medium text-slate-600">
-                        {calculateProgress(charity.raisedAmount, charity.targetAmount)}%
-                      </span>
-                    </div>
-                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-gradient-to-r from-violet-600 to-teal-500 transition-all duration-500"
-                        style={{ 
-                          width: `${calculateProgress(charity.raisedAmount, charity.targetAmount)}%` 
-                        }}
-                      />
+                      
+                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                        <div
+                          className="bg-violet-600 h-2.5 rounded-full transition-all duration-300"
+                          style={{ width: `${progress}%` }}
+                        ></div>
+                      </div>
+                      
+                      <div className="text-right">
+                        <span className="text-sm font-medium text-violet-600">{progress}%</span>
+                      </div>
                     </div>
                   </div>
+                </Link>
 
-                  <div className="flex items-center justify-between pt-2">
-                    <span className="text-xs text-slate-600">
-                      Started funding since {new Date(charity.createdAt).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}
-                    </span>
-                    <Link 
-                      href={`/charities/${charity.id}`}
-                      className="btn-primary bg-gradient-to-r from-violet-600 to-teal-500 !py-2 !px-6"
+                <div className="px-6 py-4 border-t border-gray-100">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-slate-500">By: {charity.fundraiserName}</span>
+                    <Link
+                      href={`/charities/${charity.id}/donate`}
+                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-colors duration-200"
                     >
                       Donate Now
                     </Link>
                   </div>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </section>
+
+        {/* Pagination Controls */}
+        <div className="mt-8 flex justify-center items-center space-x-4">
+          <button
+            onClick={() => handlePageChange(page - 1)}
+            disabled={page === 0}
+            className={`px-4 py-2 rounded-lg ${
+              page === 0
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-violet-600 text-white hover:bg-violet-700'
+            }`}
+          >
+            Previous
+          </button>
+          <span className="text-slate-600">
+            Page {page + 1} of {totalPages}
+          </span>
+          <button
+            onClick={() => handlePageChange(page + 1)}
+            disabled={page === totalPages - 1}
+            className={`px-4 py-2 rounded-lg ${
+              page === totalPages - 1
+                ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                : 'bg-violet-600 text-white hover:bg-violet-700'
+            }`}
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="mt-4 text-center text-sm text-slate-500">
+          Showing {charities.length} of {totalElements} charities
+        </div>
+      </div>
     </main>
   );
 } 
