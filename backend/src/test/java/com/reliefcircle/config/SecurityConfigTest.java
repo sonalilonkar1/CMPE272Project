@@ -112,9 +112,7 @@ class SecurityConfigTest {
 
     @Test
     void testJwtAuthenticationFilter_CreatedWithCorrectDependencies() {
-        // Arrange
-        UserDetailsService userDetailsService = securityConfig.userDetailsService();
-
+        
         // Act
         JwtAuthenticationFilter filter = securityConfig.jwtAuthenticationFilter();
 

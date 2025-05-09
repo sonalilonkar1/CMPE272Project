@@ -52,14 +52,13 @@ public class SecurityConfig {
         return new JwtAuthenticationFilter(jwtService, userDetailsService());
     }
 
-                         
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         return http
             .csrf(csrf -> csrf.disable())
-            .authorizeHttpRequests(auth ->auth
+            .authorizeHttpRequests(auth -> auth
                 // Public endpoints
-                .requestMatchers("/api/auth/**", "/api/authenticate", "/oauth2/**", "/login/**").permitAll()
+                .requestMatchers("/api/auth/**", "/api/authenticate").permitAll()
                 .requestMatchers("/api/proofs/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
@@ -76,23 +75,24 @@ public class SecurityConfig {
                 .requestMatchers("/api/users/{userId}/image/**").authenticated()
                 .requestMatchers("/api/users/me").authenticated()
                 .requestMatchers("/api/donations/*/verify").hasAuthority("ROLE_ADMIN")
+                
+                // Donation endpoints
+                .requestMatchers(HttpMethod.GET, "/api/donations").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.POST, "/api/donations").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/donations/{id}").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER", "ROLE_ADMIN")
 
-                // Catch-all admin scope for API
-                .requestMatchers("/api/**").hasAuthority("ROLE_ADMIN")
+                // Admin-only endpoints
+                .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                
+                // Default authenticated access for other API endpoints
+                .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
-        )
-        .oauth2Login(oauth2 -> oauth2
-            .userInfoEndpoint(userInfo -> userInfo
-                .oidcUserService(customOAuth2UserService)
             )
-            .defaultSuccessUrl("/api/auth/me", true)
-        )
-        .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-        .authenticationProvider(authenticationProvider(userDetailsService(), passwordEncoder()))
-        .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
-        .build();
-}
-
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+            .authenticationProvider(authenticationProvider(userDetailsService(), passwordEncoder()))
+            .addFilterBefore(jwtAuthenticationFilter(), UsernamePasswordAuthenticationFilter.class)
+            .build();
+    }
 
     @Bean
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
