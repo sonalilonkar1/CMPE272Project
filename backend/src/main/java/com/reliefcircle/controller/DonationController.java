@@ -16,7 +16,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -96,7 +95,19 @@ public class DonationController {
     public ResponseEntity<VerificationDto> submitVerification(
             @PathVariable("verificationId") @Positive(message = "Verification ID must be positive") Long verificationId,
             @RequestParam("comments") @NotBlank(message = "Comments are required") String comments,
-            @RequestParam("status") @NotBlank(message = "Status is required") String status) {
+            @RequestParam("status") @NotBlank(message = "Status is required") String status,
+            Authentication authentication) {
+        
+        Object principal = authentication.getPrincipal();
+        if (!(principal instanceof User user)) {
+            throw new IllegalArgumentException("Invalid authentication type");
+        }
+
+        // Check if user is a donor and volunteer, or an admin
+        if ((user.getRole() != User.UserRole.DONOR || !user.getIsVolunteer()) && user.getRole() != User.UserRole.ADMIN) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         VerificationDto verification = charityService.submitVerification(verificationId, comments, status);
         return ResponseEntity.ok(verification);
     }

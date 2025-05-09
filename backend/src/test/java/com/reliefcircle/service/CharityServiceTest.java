@@ -1,134 +1,177 @@
 package com.reliefcircle.service;
-// package com.reliefcircle.service;
 
-// import static org.junit.jupiter.api.Assertions.*;
-// import static org.mockito.Mockito.*;
+import com.reliefcircle.dto.CharityDto;
+import com.reliefcircle.exception.CharityException;
+import com.reliefcircle.model.Charity;
+import com.reliefcircle.model.User;
+import com.reliefcircle.repository.CharityRepository;
+import com.reliefcircle.repository.DonationRepository;
+import com.reliefcircle.repository.UserRepository;
+import com.reliefcircle.repository.VerificationRepository;
+import com.reliefcircle.config.PayPalConfig;
+import com.reliefcircle.service.AWSService;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 
-// import com.reliefcircle.datastore.CharityRepository;
-// import com.reliefcircle.datastore.DonationRepository;
-// import com.reliefcircle.dto.CharityDto;
-// import com.reliefcircle.model.Charity;
-// import org.junit.jupiter.api.BeforeEach;
-// import org.junit.jupiter.api.Test;
-// import org.mockito.InjectMocks;
-// import org.mockito.Mock;
-// import org.mockito.MockitoAnnotations;
-// import org.springframework.web.multipart.MultipartFile;
+import java.math.BigDecimal;
+import java.util.Arrays;
+import java.util.Optional;
+import java.util.UUID;
 
-// import java.util.Arrays;
-// import java.util.List;
-// import java.util.Optional;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.*;
 
-// class CharityServiceTest {
+class CharityServiceTest {
 
-//     @Mock
-//     private CharityRepository charityRepository;
+    @Mock
+    private CharityRepository charityRepository;
 
-//     @Mock
-//     private DonationRepository donationRepository;
+    @Mock
+    private DonationRepository donationRepository;
 
-//     @Mock
-//     private MultipartFile mockFile;
+    @Mock
+    private UserRepository userRepository;
 
-//     @InjectMocks
-//     private CharityService charityService;
+    @Mock
+    private VerificationRepository verificationRepository;
 
-//     @BeforeEach
-//     void setUp() {
-//         // MockitoAnnotations.openMocks(this);
-//     }
+    @Mock
+    private AWSService awsService;
 
-//     @Test
-//     void testRegisterCharity_Success() {
-//         CharityDto dto = CharityDto.builder()
-//                 .cname("Test Charity")
-//                 .email("test@example.com")
-//                 .description("Helping People")
-//                 .location("New York")
-//                 .file(mockFile)
-//                 .build();
+    @Mock
+    private PayPalConfig payPalConfig;
 
-//         Charity charity = Charity.builder()
-//                 .charityName(dto.getCname())
-//                 .approved(false)
-//                 .description(dto.getDescription())
-//                 .email(dto.getEmail())
-//                 .location(dto.getLocation())
-//                 .fileLink("http://mock-cloudfront.com/test-file")
-//                 .build();
+    @InjectMocks
+    private CharityService charityService;
 
-//         when(charityRepository.save(any(Charity.class))).thenReturn(charity);
-//         when(mockFile.getOriginalFilename()).thenReturn("test-file.jpg");
-//         // mockStatic(AWSService.class);
-//         // when(AWSService.uploadFile(anyString(), any(MultipartFile.class))).thenReturn(true);
-//         // when(AWSService.pubMessageToAdmin(any(CharityDto.class))).thenReturn(true);
+    private User testFundraiser;
+    private CharityDto testCharityDto;
+    private User testUser;
+    private Charity testCharity;
 
-//         CharityDto result = charityService.registerCharity(dto);
+    @BeforeEach
+    void setUp() {
+        MockitoAnnotations.openMocks(this);
+        
+        testFundraiser = User.builder()
+                .id(UUID.randomUUID())
+                .email("fundraiser@example.com")
+                .role(User.UserRole.FUNDRAISER)
+                .build();
 
-//         assertNotNull(result);
-//         assertEquals(dto.getCname(), result.getCname());
-//         assertEquals(dto.getEmail(), result.getEmail());
-//         verify(charityRepository, times(1)).save(any(Charity.class));
-//     }
+        testCharityDto = CharityDto.builder()
+                .name("Test Charity")
+                .description("Test Description")
+                .organizationName("Test Org")
+                .category("Education")
+                .targetAmount(new BigDecimal("1000.00"))
+                .fundraiserId(testFundraiser.getId())
+                .build();
 
-//     @Test
-//     void testRegisterCharity_Failure() {
-//         CharityDto dto = CharityDto.builder()
-//                 .cname("Test Charity")
-//                 .email("test@example.com")
-//                 .description("Helping People")
-//                 .location("New York")
-//                 .file(mockFile)
-//                 .build();
+        testUser = User.builder()
+                .id(UUID.randomUUID())
+                .email("test@example.com")
+                .role(User.UserRole.FUNDRAISER)
+                .build();
 
-//         when(mockFile.getOriginalFilename()).thenReturn("test-file.jpg");
-//         // mockStatic(AWSService.class);
-//         // when(AWSService.uploadFile(anyString(), any(MultipartFile.class))).thenReturn(false);
+        testCharity = Charity.builder()
+                .id(1L)
+                .name("Test Charity")
+                .description("Test Description")
+                .organizationName("Test Org")
+                .category("Education")
+                .targetAmount(new BigDecimal("1000.00"))
+                .fundraiser(testUser)
+                .build();
 
-//         Exception exception = assertThrows(RuntimeException.class, () -> {
-//             charityService.registerCharity(dto);
-//         });
+        when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
+        when(userRepository.findById(any(UUID.class))).thenReturn(Optional.of(testFundraiser));
+    }
 
-//         assertTrue(exception.getMessage().contains("Cannot Upload"));
-//     }
+    @Test
+    void testRegisterCharity_Success() {
+        // Arrange
+        when(charityRepository.save(any(Charity.class))).thenReturn(testCharity);
+        when(awsService.uploadFile(anyString(), any(MultipartFile.class))).thenReturn(true);
 
-//     @Test
-//     void testGetAllCharities() {
-//         Charity charity1 = Charity.builder().charityName("Charity1").approved(true).build();
-//         Charity charity2 = Charity.builder().charityName("Charity2").approved(false).build();
-//         List<Charity> charityList = Arrays.asList(charity1, charity2);
+        // Act
+        CharityDto result = charityService.registerCharity(testCharityDto);
 
-//         when(charityRepository.findAll()).thenReturn(charityList);
+        // Assert
+        assertNotNull(result);
+        assertEquals(testCharityDto.getName(), result.getName());
+        verify(charityRepository).save(any(Charity.class));
+    }
 
-//         List<CharityDto> result = charityService.getAllCharities();
+    @Test
+    void testGetAllCharities() {
+        // Arrange
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("name").ascending());
+        Page<Charity> page = new PageImpl<>(Arrays.asList(testCharity));
+        when(charityRepository.findAll(any(PageRequest.class))).thenReturn(page);
 
-//         assertEquals(2, result.size());
-//     }
+        // Act
+        Page<CharityDto> result = charityService.getAllCharities(pageRequest);
 
-//     @Test
-//     void testGetApprovedCharities() {
-//         Charity charity1 = Charity.builder().charityName("Charity1").approved(true).build();
-//         Charity charity2 = Charity.builder().charityName("Charity2").approved(false).build();
-//         List<Charity> charityList = Arrays.asList(charity1, charity2);
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        assertEquals(testCharity.getName(), result.getContent().get(0).getName());
+    }
 
-//         when(charityRepository.findAll()).thenReturn(charityList);
+    @Test
+    void testGetVerifiedCharities() {
+        // Arrange
+        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("name").ascending());
+        Page<Charity> page = new PageImpl<>(Arrays.asList(testCharity));
+        when(charityRepository.findByIsVerified(eq(true), any(PageRequest.class))).thenReturn(page);
 
-//         List<CharityDto> result = charityService.getApprovedCharities();
+        // Act
+        Page<CharityDto> result = charityService.getVerifiedCharities(pageRequest);
 
-//         assertEquals(1, result.size());
-//         assertTrue(result.get(0).isApproved());
-//     }
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.getContent().size());
+        assertEquals(testCharity.getName(), result.getContent().get(0).getName());
+    }
 
-//     @Test
-//     void testApproveCharity() {
-//         Charity charity = Charity.builder().charityName("Charity1").approved(false).build();
+    @Test
+    void testGetCharityById() {
+        // Arrange
+        when(charityRepository.findById(anyLong())).thenReturn(Optional.of(testCharity));
 
-//         when(charityRepository.findById(anyLong())).thenReturn(Optional.of(charity));
+        // Act
+        CharityDto result = charityService.getCharityById(1L);
 
-//         boolean result = charityService.approveCharity(1L);
+        // Assert
+        assertNotNull(result);
+        assertEquals(testCharity.getName(), result.getName());
+    }
 
-//         assertTrue(result);
-//         assertTrue(charity.isApproved());
-//         verify(charityRepository, times(1)).save(charity);
-//     }
-// }
+    @Test
+    void testUpdateCharity() {
+        // Arrange
+        when(charityRepository.findById(anyLong())).thenReturn(Optional.of(testCharity));
+        when(charityRepository.save(any(Charity.class))).thenReturn(testCharity);
+
+        // Act
+        CharityDto result = charityService.updateCharity(1L, testCharityDto);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(testCharityDto.getName(), result.getName());
+        verify(charityRepository).save(any(Charity.class));
+    }
+} 

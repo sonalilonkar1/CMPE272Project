@@ -47,13 +47,22 @@ public class CharityController {
      * @param donorId Optional donor ID to filter charities by donations
      * @param fundraiserId Optional fundraiser ID to filter charities by fundraiser
      * @param paginationRequest Pagination parameters
+     * @param authentication The authentication object (required if donorId or fundraiserId is provided)
      * @return Paginated list of charities based on the provided filters
      */
     @GetMapping
     public ResponseEntity<PaginatedResponse<CharityDto>> getAllCharities(
             @RequestParam(required = false) UUID donorId,
             @RequestParam(required = false) UUID fundraiserId,
-            @Valid PaginationRequest paginationRequest) {
+            @Valid PaginationRequest paginationRequest,
+            Authentication authentication) {
+        
+        // Check authentication if donorId or fundraiserId is provided
+        if (donorId != null || fundraiserId != null) {
+            if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            }
+        }
         
         Page<CharityDto> page;
         PageRequest pageRequest = PageRequest.of(
@@ -88,7 +97,7 @@ public class CharityController {
     }
     
     /**
-     * Get only verified charities
+     * Get only verified charities (public endpoint)
      * @param paginationRequest Pagination parameters
      * @return Paginated list of verified charities
      */
@@ -111,7 +120,7 @@ public class CharityController {
     }
 
     /**
-     * Get a charity by ID
+     * Get a charity by ID (public endpoint)
      * @param id Charity ID
      * @return The charity with the specified ID
      */
@@ -185,6 +194,42 @@ public class CharityController {
             return ResponseEntity.status(HttpStatus.CREATED).body(createdCharity);
         } catch (Exception ex) {
             throw new CharityException("Failed to register charity: " + ex.getMessage(), ex);
+        }
+    }
+
+    /**
+     * Update an existing charity
+     * @param id Charity ID
+     * @param dto Updated charity information
+     * @return The updated charity
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<CharityDto> updateCharity(
+            @PathVariable("id") @Positive(message = "Charity ID must be positive") Long id,
+            @Valid @RequestBody CharityDto dto,
+            Authentication authentication) {
+        try {
+            Object principal = authentication.getPrincipal();
+            if (!(principal instanceof User user)) {
+                throw new IllegalArgumentException("Invalid authentication type");
+            }
+
+            if (user.getRole() != User.UserRole.FUNDRAISER && user.getRole() != User.UserRole.ADMIN) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+
+            // Check if user is the fundraiser of this charity (skip for admin)
+            if (user.getRole() != User.UserRole.ADMIN) {
+                CharityDto existingCharity = charityService.getCharityById(id);
+                if (!existingCharity.getFundraiserId().equals(user.getId())) {
+                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+                }
+            }
+
+            CharityDto updatedCharity = charityService.updateCharity(id, dto);
+            return ResponseEntity.ok(updatedCharity);
+        } catch (Exception ex) {
+            throw new CharityException("Failed to update charity: " + ex.getMessage(), ex);
         }
     }
 }
