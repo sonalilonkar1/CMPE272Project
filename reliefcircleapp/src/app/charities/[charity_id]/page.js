@@ -1,11 +1,10 @@
 import { Suspense } from 'react'
 import CharityContent, { CharityDetailSkeleton } from './CharityContent'
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api'
+import { CHARITY_ENDPOINTS } from '@/utils/api'
 
 async function getCharity(id) {
   try {
-    const response = await fetch(`${API_URL}/charities/${id}`, {
+    const response = await fetch(CHARITY_ENDPOINTS.DETAIL(id), {
       headers: {
         'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRE9OT1IiLCJzdWIiOiJ0ZXN0dXNlcjJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDU4NjM4MTEsImV4cCI6MTc0NTk1MDIxMX0.EhEe-STkhRAaE-H8QibTIIV_RDQ4FqSnMlvp2txv0Kc13t_7eNgsAMAKwG6i937vz1TjGzu1g5xUS-pjT8q-3g'
       },
@@ -23,9 +22,9 @@ async function getCharity(id) {
   }
 }
 
-export default async function CharityDetail({ params }) {
+export default async function CharityPage({ params }) {
   const charity = await getCharity(params.charity_id);
-  
+
   return (
     <Suspense fallback={<CharityDetailSkeleton />}>
       <CharityContent initialData={charity} />

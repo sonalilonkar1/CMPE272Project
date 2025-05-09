@@ -1,15 +1,14 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { showToast } from '@/components/Toast';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
+import { CHARITY_ENDPOINTS } from '@/utils/api';
 
 // Async thunk for fetching charities
 export const fetchCharities = createAsyncThunk(
   'charities/fetchCharities',
   async ({ page = 0, pageSize = 6 }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/charities?page=${page}&pageSize=${pageSize}`);
+      const response = await axios.get(`${CHARITY_ENDPOINTS.LIST}?page=${page}&pageSize=${pageSize}`);
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to fetch charities';
@@ -24,7 +23,7 @@ export const fetchCharityById = createAsyncThunk(
   'charities/fetchCharityById',
   async (charityId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/charities/${charityId}`, {
+      const response = await axios.get(CHARITY_ENDPOINTS.DETAIL(charityId), {
         headers: {
           'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRE9OT1IiLCJzdWIiOiJ0ZXN0dXNlcjJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDU4NjM4MTEsImV4cCI6MTc0NTk1MDIxMX0.EhEe-STkhRAaE-H8QibTIIV_RDQ4FqSnMlvp2txv0Kc13t_7eNgsAMAKwG6i937vz1TjGzu1g5xUS-pjT8q-3g'
         }
@@ -41,7 +40,7 @@ export const createCharity = createAsyncThunk(
   'charities/createCharity',
   async (charityData, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${API_URL}/charities`, charityData);
+      const response = await axios.post(CHARITY_ENDPOINTS.CREATE, charityData);
       showToast.success('Charity created successfully!');
       return response.data;
     } catch (error) {
@@ -57,7 +56,7 @@ export const fetchFundraiserCharities = createAsyncThunk(
   'charities/fetchFundraiserCharities',
   async ({ fundraiserId, page = 0, pageSize = 10 }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${API_URL}/charities?fundraiserId=${fundraiserId}&page=${page}&pageSize=${pageSize}`);
+      const response = await axios.get(`${CHARITY_ENDPOINTS.FUNDRAISER_CHARITIES(fundraiserId)}&page=${page}&pageSize=${pageSize}`);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch fundraiser charities');
