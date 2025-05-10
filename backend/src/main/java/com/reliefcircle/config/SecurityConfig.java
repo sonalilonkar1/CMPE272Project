@@ -18,6 +18,7 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.access.expression.WebExpressionAuthorizationManager;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
@@ -68,92 +69,40 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth ->
                 auth
                     // Public endpoints
-                    .requestMatchers("/api/auth/**", "/api/authenticate")
-                    .permitAll()
-                    .requestMatchers("/api/proofs/**")
-                    .permitAll()
-                    // Base /api/charities endpoint is public, but endpoints with parameters need authentication
-                    .requestMatchers(HttpMethod.GET, "/api/charities")
-                    .permitAll()
-                    // Special handling for /api/charities with query parameters
-                    .requestMatchers(HttpMethod.GET, "/api/charities/**")
-                    .authenticated()
-                    .requestMatchers(HttpMethod.GET, "/api/charities/verified")
-                    .permitAll()
-                    .requestMatchers(HttpMethod.GET, "/api/charities/{id}")
-                    .permitAll()
-                    // Charity operations
-                    .requestMatchers(HttpMethod.POST, "/api/charities")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers(HttpMethod.PUT, "/api/charities/*")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    // User and donation endpoints
-                    .requestMatchers("/api/users/donors/volunteers")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers("/api/users")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers("/api/users/{userId}/image/**")
-                    .authenticated()
-                    .requestMatchers("/api/users/me")
-                    .authenticated()
-                    .requestMatchers("/api/donations/*/verify")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    // Donation endpoints
-                    .requestMatchers(HttpMethod.GET, "/api/donations").hasAuthority("ROLE_DONOR") // Allow donors
-                    .requestMatchers(HttpMethod.POST, "/api/donations").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER")
-                    .requestMatchers(HttpMethod.GET, "/api/donations/{id}").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER")
-                
-                    // Update endpoints
-                    .requestMatchers(HttpMethod.GET, "/api/updates/{id}")
-                    .permitAll()
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/updates/charity/{charityId}"
-                    )
-                    .permitAll()
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/updates/{updateId}/ratings"
-                    )
-                    .permitAll()
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/updates/fundraiser/{fundraiserId}"
-                    )
-                    .permitAll()
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/updates/donor/{donorId}"
-                    )
-                    .authenticated()
-                    .requestMatchers(
-                        HttpMethod.GET,
-                        "/api/updates/volunteer/{volunteerId}"
-                    )
-                    .authenticated()
-                    .requestMatchers(HttpMethod.POST, "/api/updates")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers(HttpMethod.PUT, "/api/updates/{id}")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers(HttpMethod.DELETE, "/api/updates/{id}")
-                    .hasAuthority("ROLE_FUNDRAISER")
-                    .requestMatchers(
-                        HttpMethod.POST,
-                        "/api/updates/{updateId}/rate"
-                    )
-                    .hasAuthority("ROLE_DONOR")
-                    .requestMatchers(
-                        HttpMethod.DELETE,
-                        "/api/updates/ratings/{ratingId}"
-                    )
-                    .hasAuthority("ROLE_DONOR")
-                    // Default authenticated access for other API endpoints
-                    .requestMatchers("/api/**")
-                    .authenticated()
-                    .anyRequest()
-                    .authenticated()
+                        .requestMatchers("/api/auth/**", "/api/authenticate").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/charities").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/charities/{id}").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/proofs/charity/{charityId}").permitAll() // Fix for API 20
+                        // Authenticated endpoints
+                        .requestMatchers(HttpMethod.GET, "/api/charities/**").authenticated()
+                        .requestMatchers("/api/users/me").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/donations").authenticated() // Fix for API 16
+                        .requestMatchers(HttpMethod.POST, "/api/donations").authenticated() // Fix for API 17
+                        // Fundraiser endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/charities").hasAuthority("ROLE_FUNDRAISER")
+                        .requestMatchers(HttpMethod.PUT, "/api/charities/*").hasAuthority("ROLE_FUNDRAISER")
+                        .requestMatchers(HttpMethod.POST, "/api/updates").hasAuthority("ROLE_FUNDRAISER")
+                        .requestMatchers(HttpMethod.PUT, "/api/updates/{id}").hasAuthority("ROLE_FUNDRAISER")
+                        .requestMatchers(HttpMethod.DELETE, "/api/updates/{id}").hasAuthority("ROLE_FUNDRAISER")
+                        .requestMatchers("/api/users").hasAuthority("ROLE_FUNDRAISER")
+                        .requestMatchers(HttpMethod.PUT, "/api/users/me/stripe-id").hasAuthority("ROLE_FUNDRAISER") // API 21
+                        .requestMatchers(HttpMethod.GET, "/api/updates/fundraiser/me").hasAuthority("ROLE_FUNDRAISER") // API 23
+                        // Donor endpoints
+                        .requestMatchers(HttpMethod.DELETE, "/api/updates/ratings/{ratingId}").hasAuthority("ROLE_DONOR")
+                        // Volunteer endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/donations/*/verify").hasAuthority("ROLE_VOLUNTEER") // Fix for API 18
+                        .requestMatchers(HttpMethod.GET, "/api/updates/volunteer/me/ratings").hasAuthority("ROLE_VOLUNTEER") // API 24
+                        // Proof endpoints
+                        .requestMatchers(HttpMethod.POST, "/api/proofs/charity/{charityId}/upload").hasAuthority("ROLE_FUNDRAISER") // Fix for API 19
+                        // User image endpoints with ownership check
+                        .requestMatchers(HttpMethod.POST, "/api/users/{userId}/image/**")
+                            .access(new WebExpressionAuthorizationManager("hasAnyRole('FUNDRAISER', 'VOLUNTEER', 'DONOR') and #userId == authentication.principal.id")) // API 7
+                        .requestMatchers(HttpMethod.GET, "/api/users/{userId}/image/**")
+                            .access(new WebExpressionAuthorizationManager("hasAnyRole('FUNDRAISER', 'VOLUNTEER', 'DONOR') and #userId == authentication.principal.id")) // API 8
+                        // Default
+                        .requestMatchers("/api/**").authenticated()
+                        .anyRequest().authenticated()
             )
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)

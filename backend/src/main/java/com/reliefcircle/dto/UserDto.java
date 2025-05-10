@@ -21,6 +21,7 @@ public class UserDto {
     private String phoneNumber;
     private User.UserRole role;
     private Boolean isVolunteer;
+    private String stripeId;
     private String userProfileImageLink;
     private LocalDateTime createdAt;
 
@@ -42,6 +43,7 @@ public class UserDto {
                 .phoneNumber(user.getPhoneNumber())
                 .role(user.getRole())
                 .isVolunteer(user.getIsVolunteer())
+                .stripeId(user.getStripeId())
                 .userProfileImageLink(user.getUserProfileImageLink().orElse(null))
                 .createdAt(user.getCreatedAt())
                 .build();
