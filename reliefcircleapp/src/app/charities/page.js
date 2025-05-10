@@ -99,49 +99,39 @@ export default function Charities() {
           {charities.map((charity) => {
             const progress = calculateProgress(charity.raisedAmount, charity.targetAmount);
             return (
-              <div key={charity.id} className="bg-white rounded-lg shadow-md flex flex-col min-h-[280px] group">
-                <Link href={`/charities/${charity.id}`} className="flex-grow p-6 pb-3 hover:bg-gray-50 transition-colors duration-200">
-                  <div>
-                    <h2 className="text-xl font-semibold text-slate-800 mb-2 line-clamp-1 group-hover:text-violet-600 transition-colors duration-200">
-                      {charity.name}
-                    </h2>
-                    <div className="mb-4">
-                      <p className="text-slate-600 line-clamp-3 min-h-[4.5rem]">
-                        {truncateText(charity.description, 120)}
-                      </p>
-                    </div>
-                    
-                    <div className="space-y-1">
-                      <div className="flex justify-between items-center">
-                        <span className="text-sm text-slate-500">Target: ${charity.targetAmount.toLocaleString()}</span>
-                        <span className="text-sm text-slate-500">Raised: ${charity.raisedAmount.toLocaleString()}</span>
+              <div key={charity.id} className="bg-white rounded-lg overflow-hidden shadow">
+                <Link href={`/charities/${charity.id}`} className="block">
+                  {/* Image Container */}
+                  <div className="relative aspect-[4/3] overflow-hidden">
+                    <img
+                      src={charity.imageUrl || '/images/charity-placeholder.jpg'}
+                      alt={charity.name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
 
-                      <div className="w-full bg-gray-200 rounded-full h-2.5">
+                  {/* Content */}
+                  <div className="p-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                      {charity.name}
+                    </h3>
+
+                    {/* Progress Bar and Amount */}
+                    <div className="mt-4">
+                      <div className="w-full bg-gray-200 rounded-full h-2">
                         <div
-                          className="bg-violet-600 h-2.5 rounded-full transition-all duration-300"
+                          className="bg-violet-600 h-2 rounded-full"
                           style={{ width: `${progress}%` }}
-                        ></div>
+                        />
                       </div>
-                      
-                      <div className="text-right">
-                        <span className="text-sm font-medium text-violet-600">{progress}%</span>
-                    </div>
+                      <div className="mt-2">
+                        <span className="text-lg font-semibold text-gray-900">
+                          ${charity.raisedAmount.toLocaleString()} raised
+                        </span>
+                      </div>
                     </div>
                   </div>
                 </Link>
-
-                <div className="px-6 py-4 border-t border-gray-100">
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-slate-500">By: {charity.fundraiserName}</span>
-                    <Link 
-                      href={`/charities/${charity.id}/donate`}
-                      className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500 transition-colors duration-200"
-                    >
-                      Donate Now
-                    </Link>
-                  </div>
-                </div>
               </div>
             );
           })}

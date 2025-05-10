@@ -116,7 +116,7 @@ export default function Header() {
                         : 'opacity-0 invisible -translate-y-2'
                     }`}
                   >
-                    {userNavLinks[USER_ROLES.FUNDRAISER]?.map((item, index) => {
+                    {userNavLinks[USER_ROLES.DONOR]?.map((item, index) => {
                       if (item.type === 'divider') {
                         return <div key={index} className="border-t border-gray-100 my-2" />;
                       }

@@ -4,11 +4,13 @@ import { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
+import { fetchDonorDonations } from '@/redux/features/donationsSlice'
 
 export default function DonorDashboard() {
   const dispatch = useDispatch()
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab') || 'overview'
+  const { donations, status, error } = useSelector((state) => state.donations)
 
   const tabs = [
     { id: 'overview', label: 'Profile', href: '/donor?tab=overview' },
@@ -76,6 +78,32 @@ export default function DonorDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [rating, setRating] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
+
+  // Mock donor ID - replace with actual ID from your auth system
+  const donorId = '7bf83b6a-0fad-41c7-ba59-55449886f6d7'
+
+  useEffect(() => {
+    if (currentTab === 'impact') {
+      dispatch(fetchDonorDonations(donorId))
+    }
+  }, [dispatch, currentTab, donorId])
+
+  // Calculate impact stats
+  const totalDonations = donations.length > 0 
+    ? donations.reduce((sum, donation) => sum + donation.amount, 0)
+    : mockDonor.totalAmount
+
+  const charitiesSupported = donations.length > 0
+    ? new Set(donations.map(d => d.charity)).size
+    : mockDonor.impactStats.charities
+
+  const peopleHelped = donations.length > 0
+    ? Math.round(totalDonations / 100) // Simple calculation: assume $100 helps one person
+    : mockDonor.impactStats.peopleHelped
+
+  const projectsSupported = donations.length > 0
+    ? Math.round(totalDonations / 500) // Simple calculation: assume $500 supports one project
+    : mockDonor.impactStats.projectsSupported
 
   const handleVolunteerSignup = () => {
     setIsVolunteer(true)
@@ -276,18 +304,18 @@ export default function DonorDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-violet-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-violet-900">Total Donations</h3>
-                  <p className="mt-2 text-3xl font-bold text-violet-600">${mockDonor.totalAmount}</p>
-                  <p className="text-sm text-violet-600">{mockDonor.totalDonations} donations made</p>
+                  <p className="mt-2 text-3xl font-bold text-violet-600">${totalDonations.toLocaleString()}</p>
+                  <p className="text-sm text-violet-600">{donations.length || mockDonor.totalDonations} donations made</p>
                 </div>
                 <div className="bg-green-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-green-900">People Helped</h3>
-                  <p className="mt-2 text-3xl font-bold text-green-600">{mockDonor.impactStats.peopleHelped}</p>
+                  <p className="mt-2 text-3xl font-bold text-green-600">{peopleHelped}</p>
                   <p className="text-sm text-green-600">Lives impacted</p>
                 </div>
                 <div className="bg-blue-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-blue-900">Projects Supported</h3>
-                  <p className="mt-2 text-3xl font-bold text-blue-600">{mockDonor.impactStats.projectsSupported}</p>
-                  <p className="text-sm text-blue-600">{mockDonor.impactStats.charities} charities</p>
+                  <p className="mt-2 text-3xl font-bold text-blue-600">{projectsSupported}</p>
+                  <p className="text-sm text-blue-600">{charitiesSupported} charities</p>
                 </div>
               </div>
 
@@ -295,21 +323,48 @@ export default function DonorDashboard() {
               <div>
                 <h3 className="text-lg font-medium text-gray-900 mb-4">Your Donations</h3>
                 <div className="space-y-4">
-                  {mockDonations.map((donation) => (
-                    <div key={donation.id} className="bg-gray-50 rounded-lg p-6">
-                      <div className="flex justify-between items-start mb-4">
-                        <div>
-                          <h4 className="text-lg font-medium text-gray-900">{donation.charityName}</h4>
-                          <p className="text-sm text-gray-500">
-                            {new Date(donation.date).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                          ${donation.amount}
-                        </span>
-                      </div>
-                      <p className="text-sm text-gray-600">{donation.impact}</p>
+                  {status === 'loading' ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
                     </div>
+                  ) : error ? (
+                    <div className="text-center text-red-600 py-4">
+                      {error}
+                    </div>
+                  ) : (donations.length === 0 ? (
+                    mockDonations.map((donation) => (
+                      <div key={donation.id} className="bg-gray-50 rounded-lg p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900">{donation.charityName}</h4>
+                            <p className="text-sm text-gray-500">
+                              {new Date(donation.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ${donation.amount}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">{donation.impact}</p>
+                      </div>
+                    ))
+                  ) : (
+                    donations.map((donation) => (
+                      <div key={donation.id} className="bg-gray-50 rounded-lg p-6">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900">{donation.charity}</h4>
+                            <p className="text-sm text-gray-500">
+                              {new Date(donation.date).toLocaleDateString()}
+                            </p>
+                          </div>
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            ${donation.amount}
+                          </span>
+                        </div>
+                        <p className="text-sm text-gray-600">Donation to {donation.charity}</p>
+                      </div>
+                    ))
                   ))}
                 </div>
               </div>
