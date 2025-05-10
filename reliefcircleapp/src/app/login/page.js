@@ -52,7 +52,16 @@ export default function Login() {
           return;
         }
 
-        router.push('/dashboard');
+        // Redirect based on user role
+        const role = result.role?.toUpperCase();
+        if (role === 'DONOR') {
+          router.push('/donor');
+        } else if (role === 'FUNDRAISER') {
+          router.push('/fundraiser');
+        } else {
+          // Default fallback
+          router.push('/');
+        }
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -60,7 +69,8 @@ export default function Login() {
   };
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/dashboard' });
+    // We can't determine the role yet, so we'll let the backend handle the redirect
+    signIn('google', { callbackUrl: '/' });
   };
 
   return (
@@ -113,45 +123,45 @@ export default function Login() {
             </div>
 
             <div>
-              <button
-                type="submit"
+            <button
+              type="submit"
                 className="btn-primary w-full"
-                disabled={loading}
-              >
-                {loading ? 'Signing in...' : 'Sign in'}
-              </button>
+              disabled={loading}
+            >
+              {loading ? 'Signing in...' : 'Sign in'}
+            </button>
             </div>
           </form>
 
-          <div className="relative my-4">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-gray-300"></div>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <div className="w-full border-t border-gray-300"></div>
+              </div>
+              <div className="relative flex justify-center text-sm">
+                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              </div>
             </div>
-            <div className="relative flex justify-center text-sm">
-              <span className="px-2 bg-white text-gray-500">Or continue with</span>
-            </div>
-          </div>
-          
-          <button
-            type="button"
-            onClick={handleGoogleSignIn}
-            className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 
-            rounded-xl shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
-          >
-            <img 
-              src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
-              alt="Google" 
-              className="h-5 w-5 mr-2" 
-            />
-            Google
-          </button>
+            
+            <button
+              type="button"
+              onClick={handleGoogleSignIn}
+              className="w-full flex items-center justify-center py-2 px-4 border border-gray-300 
+              rounded-xl shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              <img 
+                src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" 
+                alt="Google" 
+                className="h-5 w-5 mr-2" 
+              />
+              Google
+            </button>
 
-          <div className="text-center text-sm text-slate-600">
-            Don&apos;t have an account?{' '}
-            <Link href="/register" className="text-violet-600 hover:text-violet-500 font-medium">
-              Sign up
-            </Link>
-          </div>
+            <div className="text-center text-sm text-slate-600">
+              Don&apos;t have an account?{' '}
+              <Link href="/register" className="text-violet-600 hover:text-violet-500 font-medium">
+                Sign up
+              </Link>
+            </div>
         </div>
       </div>
     </main>

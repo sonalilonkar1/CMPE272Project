@@ -24,7 +24,7 @@ export default function ProtectedRoute({
     
     // If role is required but user doesn't have it
     if (requiredRole && session.user.role !== requiredRole) {
-      router.push('/dashboard');
+      router.push('/');
     }
   }, [session, status, requiredRole, redirectTo, router]);
   

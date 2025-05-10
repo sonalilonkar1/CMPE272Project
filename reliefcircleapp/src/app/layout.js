@@ -1,7 +1,10 @@
 import './globals.css'
 import { Inter } from 'next/font/google'
 import { Providers } from './providers'
+import Header from '@/components/Header'
+import UserProfileProvider from '@/components/UserProfileProvider'
 import { setupAxiosInterceptors } from '@/lib/auth'
+import Footer from '@/components/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -11,8 +14,8 @@ if (typeof window !== 'undefined') {
 }
 
 export const metadata = {
-  title: 'ReliefCircle',
-  description: 'Your trusted platform for charity and fundraising',
+  title: 'ReliefCircle - Connecting Charities, Donors, and Volunteers',
+  description: 'A transparent and decentralized platform connecting charities, donors, and volunteers to make a real impact in communities.',
 }
 
 export default function RootLayout({ children }) {
@@ -20,7 +23,15 @@ export default function RootLayout({ children }) {
     <html lang="en">
       <body className={inter.className}>
         <Providers>
-          {children}
+          <UserProfileProvider>
+            <div className="min-h-screen flex flex-col">
+              <Header />
+              <main className="flex-grow">
+                {children}
+              </main>
+              <Footer />
+            </div>
+          </UserProfileProvider>
         </Providers>
       </body>
     </html>

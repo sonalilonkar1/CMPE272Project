@@ -59,8 +59,16 @@ export default function Register() {
           // If auto-login fails, redirect to login page
           router.push('/login?registered=true')
         } else {
-          // Registration and login successful, redirect to dashboard
-          router.push('/dashboard')
+          // Registration and login successful, redirect based on role
+          const role = result.role?.toUpperCase()
+          if (role === 'DONOR') {
+            router.push('/donor')
+          } else if (role === 'FUNDRAISER') {
+            router.push('/fundraiser')
+          } else {
+            // Default fallback
+            router.push('/')
+          }
         }
       }
     } catch (err) {
@@ -104,22 +112,22 @@ export default function Register() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
+              <div>
               <label htmlFor="fullName" className="block text-sm font-medium text-slate-700">
                 Full Name
-              </label>
-              <div className="mt-1">
-                <input
+                </label>
+                <div className="mt-1">
+                  <input
                   id="fullName"
                   name="fullName"
-                  type="text"
+                    type="text"
                   autoComplete="name"
-                  required
+                    required
                   value={formData.fullName}
-                  onChange={handleChange}
-                  className="input-field"
+                    onChange={handleChange}
+                    className="input-field"
                   placeholder="Enter your full name"
-                />
+                  />
               </div>
             </div>
 
