@@ -4,6 +4,7 @@ import { Providers } from './providers'
 import Header from '@/components/Header'
 import UserProfileProvider from '@/components/UserProfileProvider'
 import { setupAxiosInterceptors } from '@/lib/auth'
+import Footer from '@/components/Footer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }) {
               <main className="flex-grow">
                 {children}
               </main>
+              <Footer />
             </div>
           </UserProfileProvider>
         </Providers>
