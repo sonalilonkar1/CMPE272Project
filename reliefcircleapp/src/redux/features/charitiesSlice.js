@@ -54,9 +54,13 @@ export const createCharity = createAsyncThunk(
 // Async thunk for fetching fundraiser's charities
 export const fetchFundraiserCharities = createAsyncThunk(
   'charities/fetchFundraiserCharities',
-  async ({ fundraiserId, page = 0, pageSize = 10 }, { rejectWithValue }) => {
+  async ({ fundraiserId, page = 0, pageSize = 10, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${CHARITY_ENDPOINTS.FUNDRAISER_CHARITIES(fundraiserId)}&page=${page}&pageSize=${pageSize}`);
+      const response = await axios.get(`${CHARITY_ENDPOINTS.FUNDRAISER_CHARITIES(fundraiserId)}&page=${page}&pageSize=${pageSize}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch fundraiser charities');

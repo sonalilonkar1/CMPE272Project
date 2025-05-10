@@ -11,27 +11,13 @@ export default function DonorDashboard() {
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab') || 'overview'
   const { donations, status, error } = useSelector((state) => state.donations)
+  const { profile } = useSelector((state) => state.user)
 
   const tabs = [
     { id: 'overview', label: 'Profile', href: '/donor?tab=overview' },
     { id: 'impact', label: 'Impact', href: '/donor?tab=impact' },
     { id: 'volunteer', label: 'Updates', href: '/donor?tab=volunteer' },
   ]
-
-  // Mock data for testing
-  const mockDonor = {
-    name: 'John Doe',
-    email: 'john@example.com',
-    totalDonations: 5,
-    totalAmount: 2500,
-    joinedDate: '2024-01-15',
-    impactStats: {
-      charities: 3,
-      peopleHelped: 150,
-      projectsSupported: 4
-    },
-    isVolunteer: false
-  }
 
   const mockDonations = [
     {
@@ -73,37 +59,50 @@ export default function DonorDashboard() {
     }
   ]
 
-  const [isVolunteer, setIsVolunteer] = useState(mockDonor.isVolunteer)
+  const [isVolunteer, setIsVolunteer] = useState(profile?.isVolunteer)
   const [selectedUpdate, setSelectedUpdate] = useState(null)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   const [rating, setRating] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Mock donor ID - replace with actual ID from your auth system
-  const donorId = '7bf83b6a-0fad-41c7-ba59-55449886f6d7'
+
+
+  const donor = profile || {
+    name: 'John Doe',
+    email: 'john@example.com',
+    totalDonations: 5,
+    totalAmount: 2500,
+    joinedDate: '2024-01-15',
+    impactStats: {
+      charities: 3,
+      peopleHelped: 150,
+      projectsSupported: 4
+    },
+    isVolunteer: false
+  }
 
   useEffect(() => {
-    if (currentTab === 'impact') {
-      dispatch(fetchDonorDonations(donorId))
+    if (currentTab === 'impact' && profile?.id && profile?.token) {
+      dispatch(fetchDonorDonations({donorId: profile?.id, token: profile?.token}))
     }
-  }, [dispatch, currentTab, donorId])
+  }, [dispatch, currentTab, profile])
 
   // Calculate impact stats
   const totalDonations = donations.length > 0 
     ? donations.reduce((sum, donation) => sum + donation.amount, 0)
-    : mockDonor.totalAmount
+    : donor.totalAmount
 
   const charitiesSupported = donations.length > 0
     ? new Set(donations.map(d => d.charity)).size
-    : mockDonor.impactStats.charities
+    : donor.impactStats?.charities
 
   const peopleHelped = donations.length > 0
     ? Math.round(totalDonations / 100) // Simple calculation: assume $100 helps one person
-    : mockDonor.impactStats.peopleHelped
+    : donor.impactStats?.peopleHelped
 
   const projectsSupported = donations.length > 0
     ? Math.round(totalDonations / 500) // Simple calculation: assume $500 supports one project
-    : mockDonor.impactStats.projectsSupported
+    : donor.impactStats?.projectsSupported
 
   const handleVolunteerSignup = () => {
     setIsVolunteer(true)
@@ -263,12 +262,12 @@ export default function DonorDashboard() {
                 <div className="bg-white p-6 rounded-lg border border-gray-200">
                   <div className="flex items-center space-x-4 mb-6">
                     <div className="w-16 h-16 rounded-full bg-violet-600 text-white flex items-center justify-center text-2xl font-medium">
-                      {mockDonor.name[0]}
+                      {profile?.fullName[0]}
                     </div>
                     <div>
-                      <h2 className="text-xl font-semibold text-gray-900">{mockDonor.name}</h2>
-                      <p className="text-sm text-gray-500">{mockDonor.email}</p>
-                      <p className="text-sm text-gray-500">Member since {new Date(mockDonor.joinedDate).toLocaleDateString()}</p>
+                      <h2 className="text-xl font-semibold text-gray-900">{profile?.fullName}</h2>
+                      <p className="text-sm text-gray-500">{profile?.email}</p>
+                      <p className="text-sm text-gray-500">Member since {profile?.joinedDate && new Date(profile.joinedDate).toLocaleDateString()}</p>
                     </div>
                   </div>
                   
@@ -279,7 +278,7 @@ export default function DonorDashboard() {
                         <label className="block text-sm font-medium text-gray-700">Name</label>
                         <input
                           type="text"
-                          value={mockDonor.name}
+                          value={profile?.fullName}
                           readOnly
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
                         />
@@ -288,7 +287,7 @@ export default function DonorDashboard() {
                         <label className="block text-sm font-medium text-gray-700">Email</label>
                         <input
                           type="email"
-                          value={mockDonor.email}
+                          value={profile?.email}
                           readOnly
                           className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-violet-500 focus:ring-violet-500"
                         />
@@ -304,8 +303,8 @@ export default function DonorDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                 <div className="bg-violet-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-violet-900">Total Donations</h3>
-                  <p className="mt-2 text-3xl font-bold text-violet-600">${totalDonations.toLocaleString()}</p>
-                  <p className="text-sm text-violet-600">{donations.length || mockDonor.totalDonations} donations made</p>
+                  <p className="mt-2 text-3xl font-bold text-violet-600">${totalDonations?.toLocaleString()}</p>
+                  <p className="text-sm text-violet-600">{donations.length || donor.totalDonations} donations made</p>
                 </div>
                 <div className="bg-green-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-green-900">People Helped</h3>

@@ -1,15 +1,30 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
-import axiosInstance from '@/lib/axios';
+import axios from '@/lib/axios';
 
 // Async thunk for fetching donor's donations
 export const fetchDonorDonations = createAsyncThunk(
   'donations/fetchDonorDonations',
-  async (donorId, { rejectWithValue }) => {
+  async ({ donorId, token }, { rejectWithValue }) => {
+    console.log("donorId, token", donorId, token)
     try {
-      const response = await axiosInstance.get(`/donations?donorId=${donorId}`);
+      const response = await axios.get(`/donations?donorId=${donorId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
       return Array.isArray(response.data) ? response.data : [];
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to fetch donations');
+      let errorMsg = 'Failed to fetch donations';
+      if (error.response?.data) {
+        if (typeof error.response.data === 'string') {
+          errorMsg = error.response.data;
+        } else if (typeof error.response.data.message === 'string') {
+          errorMsg = error.response.data.message;
+        } else {
+          errorMsg = JSON.stringify(error.response.data);
+        }
+      }
+      return rejectWithValue(errorMsg);
     }
   }
 );

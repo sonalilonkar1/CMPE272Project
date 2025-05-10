@@ -18,7 +18,7 @@ export const fetchUserProfile = createAsyncThunk(
           'Authorization': `Bearer ${session.accessToken}`
         }
       });
-      return response.data;
+      return {...response.data, token: session.accessToken};
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch user profile');
     }

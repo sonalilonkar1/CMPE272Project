@@ -7,7 +7,9 @@ export default function ConnectStripeButton({ fundraiserId }) {
   const handleConnect = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/create-stripe-link?fundraiserId=${fundraiserId}`);
+      const res = await fetch(`/api/create-stripe-link?fundraiserId=${fundraiserId}`, {
+        method: 'POST',
+      });
       const data = await res.json();
       
       if (!res.ok) {

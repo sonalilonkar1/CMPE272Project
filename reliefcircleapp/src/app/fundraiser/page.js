@@ -6,29 +6,40 @@ import { fetchFundraiserCharities } from '@/redux/features/charitiesSlice'
 import { useSearchParams } from 'next/navigation'
 import UpdateModal from '@/components/UpdateModal'
 import TransactionsTab from '@/components/TransactionsTab'
+import { showToast } from '@/components/Toast'
 
 export default function FundraiserDashboard() {
   const dispatch = useDispatch()
-  const [page, setPage] = useState(0)
+  const [page, setPage] = useState(1)
   const [selectedCharity, setSelectedCharity] = useState(null)
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   
   const { 
     status, 
-    error 
+    error,
+    fundraiserCharities
   } = useSelector((state) => state.charities)
+
+  const { profile } = useSelector((state) => state.user)
+  const fundraiserId = profile?.id
+  const token = profile?.token
 
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab') || 'overview'
-
-  // Mock fundraiser ID - replace with actual ID from your auth system
-  const fundraiserId = '2770e3eb-c16c-4662-b24e-a5c689929848'
+  const stripeStatus = searchParams.get('stripe')
 
   useEffect(() => {
-    if (currentTab === 'charities') {
-      dispatch(fetchFundraiserCharities({ fundraiserId, page }))
+    if (currentTab === 'charities' && fundraiserId && token) {
+      dispatch(fetchFundraiserCharities({ fundraiserId, page, token }))
     }
-  }, [dispatch, currentTab, fundraiserId, page])
+  }, [dispatch, currentTab, fundraiserId, page, token])
+
+  useEffect(() => {
+    if (currentTab === 'transactions' && stripeStatus === 'success') {
+      // TODO: Toast not working
+      showToast.success('Stripe connected successfully')
+    }
+  }, [currentTab, stripeStatus])
 
   const handlePageChange = (newPage) => {
     setPage(newPage)
@@ -78,7 +89,8 @@ export default function FundraiserDashboard() {
 
   // Combine mock charity with API data
   // const displayCharities = [...(fundraiserCharities || []), mockCharity]
-  const displayCharities =  [mockCharity]
+  const displayCharities = fundraiserCharities || [];
+
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
