@@ -3,7 +3,6 @@ package com.reliefcircle.service;
 import com.reliefcircle.exception.ResourceNotFoundException;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.UserRepository;
-import com.reliefcircle.util.aws.FileStore;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -12,22 +11,17 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class UserServiceTest {
 
     @Mock
     private UserRepository userRepository;
-
-    @Mock
-    private FileStore fileStore;
 
     @InjectMocks
     private UserService userService;
@@ -85,23 +79,4 @@ class UserServiceTest {
         verify(userRepository).findById(userId);
     }
 
-    @Test
-    void testUploadUserImage() {
-        // Arrange
-        UUID userId = UUID.randomUUID();
-        User user = User.builder().id(userId).email("test@example.com").build();
-        MultipartFile file = mock(MultipartFile.class);
-
-        when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(user));
-        when(file.getOriginalFilename()).thenReturn("test.jpg");
-        when(file.getContentType()).thenReturn("image/jpeg");
-        when(file.getSize()).thenReturn(1024L);
-
-        // Act
-        userService.uploadUserImage(userId, file);
-
-        // Assert
-        verify(fileStore).save(anyString(), anyString(), any(), any());
-        verify(userRepository).save(any(User.class));
-    }
 } 

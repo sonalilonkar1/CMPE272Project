@@ -344,4 +344,5 @@ public class DataInitializer {
             System.out.println("Data initialization completed successfully");
         };
     }
+    
 } 

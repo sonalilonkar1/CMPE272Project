@@ -24,6 +24,8 @@ backend/gradle/
 # Ignore system files
 .DS_Store
 
+# environment variables
+.env
 
 # Log file
 *.log
