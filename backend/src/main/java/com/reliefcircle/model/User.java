@@ -63,7 +63,7 @@ public class User implements UserDetails {
     private LocalDateTime createdAt = LocalDateTime.now();
 
     public enum UserRole {
-        ADMIN, DONOR, FUNDRAISER, VOLUNTEER
+        DONOR, FUNDRAISER, VOLUNTEER
     }
 
     public Optional<String> getUserProfileImageLink() {

@@ -25,8 +25,7 @@ class JwtServiceTest {
         testUser = User.builder()
                 .email("test@example.com")
                 .fullName("Test User")
-                .role(UserRole.ADMIN)
-                .passwordHash("password")
+                .role(UserRole.FUNDRAISER)
                 .build();
     }
 
@@ -51,7 +50,7 @@ class JwtServiceTest {
         
         assertNotNull(claims);
         assertEquals(testUser.getEmail(), claims.get("sub"));
-        assertEquals(UserRole.ADMIN.name(), claims.get("role"));
+        assertEquals(UserRole.FUNDRAISER.name(), claims.get("role"));
     }
 
     @Test

@@ -60,29 +60,32 @@ public class SecurityConfig {
                 // Public endpoints
                 .requestMatchers("/api/auth/**", "/api/authenticate").permitAll()
                 .requestMatchers("/api/proofs/**").permitAll()
+                // Base /api/charities endpoint is public, but endpoints with parameters need authentication
                 .requestMatchers(HttpMethod.GET, "/api/charities").permitAll()
+                // Special handling for /api/charities with query parameters
+                .requestMatchers(HttpMethod.GET, "/api/charities/**").authenticated()
                 .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
                 .requestMatchers(HttpMethod.GET, "/api/charities/{id}").permitAll()
 
                 // Charity operations
                 .requestMatchers(HttpMethod.POST, "/api/charities").hasAuthority("ROLE_FUNDRAISER")
-                .requestMatchers(HttpMethod.PUT, "/api/charities/*").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
-                .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify").hasAuthority("ROLE_ADMIN")
+                .requestMatchers(HttpMethod.PUT, "/api/charities/*").hasAuthority("ROLE_FUNDRAISER")
+                .requestMatchers(HttpMethod.PUT, "/api/charities/*/verify").hasAuthority("ROLE_FUNDRAISER")
 
                 // User and donation endpoints
-                .requestMatchers("/api/users/donors/volunteers").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
-                .requestMatchers("/api/users").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/users/donors/volunteers").hasAuthority("ROLE_FUNDRAISER")
+                .requestMatchers("/api/users").hasAuthority("ROLE_FUNDRAISER")
                 .requestMatchers("/api/users/{userId}/image/**").authenticated()
                 .requestMatchers("/api/users/me").authenticated()
-                .requestMatchers("/api/donations/*/verify").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/api/donations/*/verify").hasAuthority("ROLE_FUNDRAISER")
                 
                 // Donation endpoints
-                .requestMatchers(HttpMethod.GET, "/api/donations").hasAnyAuthority("ROLE_FUNDRAISER", "ROLE_ADMIN")
-                .requestMatchers(HttpMethod.POST, "/api/donations").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER", "ROLE_ADMIN")
-                .requestMatchers(HttpMethod.GET, "/api/donations/{id}").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER", "ROLE_ADMIN")
+                .requestMatchers(HttpMethod.GET, "/api/donations").hasAuthority("ROLE_FUNDRAISER")
+                .requestMatchers(HttpMethod.POST, "/api/donations").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER")
+                .requestMatchers(HttpMethod.GET, "/api/donations/{id}").hasAnyAuthority("ROLE_DONOR", "ROLE_FUNDRAISER")
 
-                // Admin-only endpoints
-                .requestMatchers("/api/admin/**").hasAuthority("ROLE_ADMIN")
+                // Fundraiser-only endpoints
+                .requestMatchers("/api/admin/**").hasAuthority("ROLE_FUNDRAISER")
                 
                 // Default authenticated access for other API endpoints
                 .requestMatchers("/api/**").authenticated()

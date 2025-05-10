@@ -66,13 +66,13 @@ class UserControllerTest {
         testUser = User.builder()
                 .id(UUID.randomUUID())
                 .email("test@example.com")
-                .role(User.UserRole.ADMIN)  // Set as ADMIN to access all endpoints
+                .role(User.UserRole.FUNDRAISER)  // Set as FUNDRAISER to access endpoints
                 .build();
 
         userDetails = new org.springframework.security.core.userdetails.User(
                 testUser.getEmail(),
                 "password",
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_ADMIN"))
+                Collections.singletonList(new SimpleGrantedAuthority("ROLE_FUNDRAISER"))
         );
 
         when(authentication.getPrincipal()).thenReturn(testUser);

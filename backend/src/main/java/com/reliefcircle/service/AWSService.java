@@ -55,6 +55,12 @@ public class AWSService {
                 .build();
     }
     
+    /**
+     * Uploads a file to S3 with the provided key name
+     * @param keyName The key name for the file in S3
+     * @param file The file to upload
+     * @return true if the upload was successful, false otherwise
+     */
     public boolean uploadFile(String keyName, MultipartFile file) {
         final int MAX_RETRIES = 3;
         for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
@@ -86,7 +92,33 @@ public class AWSService {
         return false;
     }
     
-    public boolean pubMessageToAdmin(CharityDto charityDto) {
+    /**
+     * Uploads a file to S3 and returns the URL for the uploaded file
+     * @param file The file to upload
+     * @param folder The folder path in S3
+     * @return The URL of the uploaded file
+     */
+    public String uploadProofDocument(MultipartFile file, String folder) {
+        String fileName = folder + "/" + java.util.UUID.randomUUID() + "-" + file.getOriginalFilename();
+
+        try (InputStream inputStream = file.getInputStream()) {
+            PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(primaryBucket)
+                .key(fileName)
+                .contentType(file.getContentType())
+                .build();
+            
+            s3Client.putObject(putObjectRequest, software.amazon.awssdk.core.sync.RequestBody.fromInputStream(inputStream, file.getSize()));
+            log.info("Successfully uploaded file: {}", fileName);
+            
+            return "https://" + primaryBucket + ".s3.amazonaws.com/" + fileName;
+        } catch (IOException e) {
+            log.error("Failed to upload file to S3: {}", e.getMessage(), e);
+            throw new RuntimeException("Failed to upload file to S3", e);
+        }
+    }
+    
+    public boolean pubMessageToFundraiser(CharityDto charityDto) {
         try {
             PublishRequest request = PublishRequest.builder()
                     .message("Charity Info: " + charityDto.toString())
@@ -101,5 +133,12 @@ public class AWSService {
             log.error("SNS Publish failed: {}", e.getMessage(), e);
             return false;
         }
+    }
+    
+    /**
+     * Alias for backward compatibility
+     */
+    public boolean pubMessageToAdmin(CharityDto charityDto) {
+        return pubMessageToFundraiser(charityDto);
     }
 }

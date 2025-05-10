@@ -4,7 +4,7 @@ import com.reliefcircle.model.Charity;
 import com.reliefcircle.model.Proof;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.ProofRepository;
-import com.reliefcircle.service.S3Service;
+import com.reliefcircle.service.AWSService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -19,7 +19,7 @@ import java.util.LinkedHashMap;
 public class ProofController {
 
     @Autowired
-    private S3Service s3Service;
+    private AWSService awsService;
 
     @Autowired
     private ProofRepository proofRepository;
@@ -45,7 +45,7 @@ public ResponseEntity<?> uploadProof(
                 .orElseThrow(() -> new RuntimeException("Charity not found with ID: " + charityId));
         System.out.println("✅ Charity found: " + charity.getName());
 
-        String s3Url = s3Service.uploadProofDocument(file, "charity-" + charityId);
+        String s3Url = awsService.uploadProofDocument(file, "charity-" + charityId);
         System.out.println("✅ File uploaded to S3: " + s3Url);
 
         Proof proof = Proof.builder()

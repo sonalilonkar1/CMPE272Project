@@ -57,6 +57,9 @@ public class Charity {
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();
 
+    @Column(name = "file_url")
+    private String fileUrl;
+
     @OneToMany(mappedBy = "charity", fetch = FetchType.LAZY)
     private List<Donation> donations;
 

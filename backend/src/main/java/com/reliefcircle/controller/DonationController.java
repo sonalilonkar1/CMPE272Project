@@ -103,8 +103,8 @@ public class DonationController {
             throw new IllegalArgumentException("Invalid authentication type");
         }
 
-        // Check if user is a donor and volunteer, or an admin
-        if ((user.getRole() != User.UserRole.DONOR || !user.getIsVolunteer()) && user.getRole() != User.UserRole.ADMIN) {
+        // Check if user is a donor and volunteer, or a fundraiser
+        if ((user.getRole() != User.UserRole.DONOR || !user.getIsVolunteer()) && user.getRole() != User.UserRole.FUNDRAISER) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 

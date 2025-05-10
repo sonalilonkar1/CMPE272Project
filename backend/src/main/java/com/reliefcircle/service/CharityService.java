@@ -68,6 +68,7 @@ public class CharityService {
             .fundraiserId(charity.getFundraiser() != null ? charity.getFundraiser().getId() : null)
             .fundraiserName(charity.getFundraiser() != null ? charity.getFundraiser().getFullName() : null)
             .fundraiserEmail(charity.getFundraiser() != null ? charity.getFundraiser().getEmail() : null)
+            .fileUrl(charity.getFileUrl())
             .build();
     }
 
@@ -95,24 +96,11 @@ public class CharityService {
             throw new IllegalArgumentException("Charity name is required");
         }
 
-        // Original file validation
-        // if (dto.getFile() == null) {
-        //     throw new IllegalArgumentException("Charity image file is required");
-        // }
         User fundraiser = userRepository.findById(dto.getFundraiserId())
         .orElseThrow(() -> new CharityException("Fundraiser not found"));
         if (fundraiser.getRole() != User.UserRole.FUNDRAISER) {
             throw new CharityException("Only users with FUNDRAISER role can create charities");
         }
-
-        // Original key generation
-        // String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
-        //         .replaceAll("\\s+", "_");
-
-        // New key generation that works with or without file
-        String key = dto.getFile() != null ? 
-            (dto.getName() + "_" + dto.getFile().getOriginalFilename()).replaceAll("\\s+", "_") :
-            dto.getName().replaceAll("\\s+", "_");
 
         BigDecimal targetAmount = dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO;
         System.out.println("Setting target amount to: " + targetAmount);
@@ -129,23 +117,35 @@ public class CharityService {
             .build();
 
         try {
-            // Original upload check
-            // boolean uploadSuccess = awsService.uploadFile(key, dto.getFile());
-
-            // New upload check that works with or without file
-            boolean uploadSuccess = dto.getFile() == null || awsService.uploadFile(key, dto.getFile());
-
-            if (uploadSuccess) {
-                Charity registeredCharity = charityRepository.save(charity);
-                System.out.println("Saved charity with target amount: " + registeredCharity.getTargetAmount());
-                log.info("Charity saved: {}", registeredCharity);
-                CharityDto saved = convert(registeredCharity);
-                System.out.println("Converted DTO target amount: " + saved.getTargetAmount());
-                awsService.pubMessageToAdmin(saved);
-                return saved;
-            } else {
-                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload charity image");
+            // Handle file upload if provided
+            if (dto.getFile() != null && !dto.getFile().isEmpty()) {
+                log.info("Uploading file: {}", dto.getFile().getOriginalFilename());
+                String folderName = "charity-" + dto.getName().replaceAll("\\s+", "_");
+                String s3Url = awsService.uploadProofDocument(dto.getFile(), folderName);
+                
+                // Save the file URL to the charity entity
+                charity.setFileUrl(s3Url);
+                log.info("File uploaded to S3: {}", s3Url);
             }
+
+            // Save charity to the database
+            Charity registeredCharity = charityRepository.save(charity);
+            System.out.println("Saved charity with target amount: " + registeredCharity.getTargetAmount());
+            log.info("Charity saved: {}", registeredCharity);
+            
+            // Convert to DTO for response
+            CharityDto saved = convert(registeredCharity);
+            
+            // Set file URL in the response DTO
+            if (registeredCharity.getFileUrl() != null) {
+                saved.setFileUrl(registeredCharity.getFileUrl());
+            }
+            
+            System.out.println("Converted DTO target amount: " + saved.getTargetAmount());
+            
+            // Notify fundraiser about the new charity
+            awsService.pubMessageToFundraiser(saved);
+            return saved;
         } catch (Exception e) {
             log.error("Error registering charity: {}", e.getMessage(), e);
             throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to register charity: " + e.getMessage());
@@ -342,12 +342,18 @@ public class CharityService {
         }
 
         // Handle file upload if provided
-        if (dto.getFile() != null) {
-            String key = (dto.getName() + "_" + dto.getFile().getOriginalFilename())
-                    .replaceAll("\\s+", "_");
-            boolean uploadSuccess = awsService.uploadFile(key, dto.getFile());
-            if (!uploadSuccess) {
-                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload charity image");
+        if (dto.getFile() != null && !dto.getFile().isEmpty()) {
+            try {
+                log.info("Uploading file: {}", dto.getFile().getOriginalFilename());
+                String folderName = "charity-" + dto.getName().replaceAll("\\s+", "_");
+                String s3Url = awsService.uploadProofDocument(dto.getFile(), folderName);
+                
+                // Save the file URL to the charity entity
+                charity.setFileUrl(s3Url);
+                log.info("File uploaded to S3: {}", s3Url);
+            } catch (Exception e) {
+                log.error("Failed to upload charity image: {}", e.getMessage(), e);
+                throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to upload charity image: " + e.getMessage());
             }
         }
 
