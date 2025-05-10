@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 
 import com.reliefcircle.model.User;
@@ -17,11 +18,15 @@ import com.reliefcircle.service.JwtUserService;
 import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.dto.PaginationRequest;
+import com.reliefcircle.dto.UpdateStripeIdRequest;
 import com.reliefcircle.dto.PaginatedResponse;
+import com.reliefcircle.dto.UserDto;
 
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.UUID;
+import java.util.List;
+import java.util.stream.Collectors;
 import jakarta.validation.Valid;
 
 /**
@@ -55,7 +60,7 @@ public class UserController {
      * @return Paginated list of user profiles
      */
     @GetMapping
-    public ResponseEntity<PaginatedResponse<User>> getUsers(
+    public ResponseEntity<PaginatedResponse<UserDto>> getUsers(
             @Valid PaginationRequest paginationRequest,
             Authentication authentication) {
         log.info("Fetching all user profiles");
@@ -68,9 +73,13 @@ public class UserController {
             
             Page<User> page = UserService.getAllUsers(
                 PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
+                
+            List<UserDto> userDtos = page.getContent().stream()
+                .map(UserDto::fromUser)
+                .collect(Collectors.toList());
 
-            PaginatedResponse<User> response = PaginatedResponse.<User>builder()
-                .content(page.getContent())
+            PaginatedResponse<UserDto> response = PaginatedResponse.<UserDto>builder()
+                .content(userDtos)
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
                 .totalElements(page.getTotalElements())
@@ -92,7 +101,7 @@ public class UserController {
      * @return The user profile
      */
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUserById(
+    public ResponseEntity<UserDto> getUserById(
             @PathVariable("id") UUID id,
             Authentication authentication) {
         log.info("Fetching user profile with ID: {}", id);
@@ -105,7 +114,8 @@ public class UserController {
             }
             
             User foundUser = UserService.getUserById(id);
-            return ResponseEntity.ok(foundUser);
+            UserDto userDto = UserDto.fromUser(foundUser);
+            return ResponseEntity.ok(userDto);
         } else {
             throw new IllegalArgumentException("Invalid authentication type");
         }
@@ -202,16 +212,17 @@ public class UserController {
      * Get the current user's information
      * 
      * @param authentication The authentication object containing the JWT token
-     * @return The current user's information
+     * @return The current user's information without sensitive data
      */
     @GetMapping("/me")
-    public ResponseEntity<User> getCurrentUser(Authentication authentication) {
+    public ResponseEntity<UserDto> getCurrentUser(Authentication authentication) {
         log.info("Fetching current user information");
 
         Object principal = authentication.getPrincipal();
 
         if (principal instanceof User user) {
-            return ResponseEntity.ok(user);
+            UserDto userDto = UserDto.fromUser(user);
+            return ResponseEntity.ok(userDto);
         } else {
             throw new IllegalArgumentException("Invalid authentication type");
         }
@@ -223,7 +234,7 @@ public class UserController {
      * @return Paginated list of donors who are volunteers
      */
     @GetMapping("/donors/volunteers")
-    public ResponseEntity<PaginatedResponse<User>> getDonorsWhoAreVolunteers(
+    public ResponseEntity<PaginatedResponse<UserDto>> getDonorsWhoAreVolunteers(
             @Valid PaginationRequest paginationRequest,
             Authentication authentication) {
         log.info("Fetching list of donors who are volunteers");
@@ -236,9 +247,13 @@ public class UserController {
             
             Page<User> page = charityService.getDonorsWhoAreVolunteers(
                 PageRequest.of(paginationRequest.getPageNumber(), paginationRequest.getPageSize()));
+                
+            List<UserDto> userDtos = page.getContent().stream()
+                .map(UserDto::fromUser)
+                .collect(Collectors.toList());
 
-            PaginatedResponse<User> response = PaginatedResponse.<User>builder()
-                .content(page.getContent())
+            PaginatedResponse<UserDto> response = PaginatedResponse.<UserDto>builder()
+                .content(userDtos)
                 .pageNumber(page.getNumber())
                 .pageSize(page.getSize())
                 .totalElements(page.getTotalElements())
@@ -250,6 +265,36 @@ public class UserController {
         } else {
             throw new IllegalArgumentException("Invalid authentication type");
         }
+    }
+
+    /**
+     * Update the Stripe ID for the logged-in user
+     * @param request The request containing the new Stripe ID
+     * @param authentication The authentication object
+     * @return ResponseEntity with success message
+     */
+    @PutMapping("/me/stripe-id")
+    public ResponseEntity<String> updateStripeId(
+            @Valid @RequestBody UpdateStripeIdRequest request,
+            Authentication authentication
+    ) {
+        // Get the logged-in user
+        User user;
+        if (authentication.getPrincipal() instanceof User) {
+            user = (User) authentication.getPrincipal();
+        } else if (authentication.getPrincipal() instanceof UserDetails) {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> new IllegalStateException("User not found"));
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Update the Stripe ID
+        user.setStripeId(request.getStripeId());
+        userRepository.save(user);
+
+        return ResponseEntity.ok("Stripe ID updated successfully");
     }
     
     /**

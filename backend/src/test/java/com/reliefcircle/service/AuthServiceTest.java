@@ -67,6 +67,7 @@ class AuthServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals("jwtToken", response.getToken());
+        assertEquals(User.UserRole.DONOR, response.getRole());
         verify(userRepository).save(any(User.class));
         verify(jwtService).generateToken(any(User.class));
     }
@@ -93,6 +94,7 @@ class AuthServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals("jwtToken", response.getToken());
+        assertEquals(User.UserRole.DONOR, response.getRole());
         verify(authenticationManager).authenticate(any());
         verify(jwtService).generateToken(any(User.class));
     }
