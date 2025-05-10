@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useSelector } from 'react-redux'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 const categories = [
   { label: 'Your cause', img: '/images/your-cause.jpg' },
@@ -65,11 +66,65 @@ export default function Home() {
               Make a Donation
             </button>
           </div>
-          {/* Collage of Placeholder Images */}
-          <div className="flex flex-wrap justify-center gap-6 mt-4">
-            <img src="/images/placeholder1.jpg" alt="Fundraiser" className="w-32 h-32 object-cover rounded-2xl shadow-md border-4 border-white" />
-            <img src="/images/placeholder2.jpg" alt="Donor" className="w-32 h-32 object-cover rounded-2xl shadow-md border-4 border-white" />
-            <img src="/images/placeholder3.jpg" alt="Volunteer" className="w-32 h-32 object-cover rounded-2xl shadow-md border-4 border-white" />
+          {/* Collage of Placeholder Images in a Wide Half-Circle */}
+          <div className="relative w-[600px] h-[260px] mx-auto mt-8">
+            {/* Fundraiser - Left (lower) */}
+            <div className="absolute left-0 top-[60%] -translate-y-1/2">
+              <div className="w-40 h-40 rounded-full ring-4 ring-violet-400 bg-white flex items-center justify-center shadow-md relative overflow-hidden">
+                <Image
+                  src="/images/placeholder1.png"
+                  alt="Fundraiser"
+                  width={120}
+                  height={120}
+                  className="object-contain"
+                  style={{ padding: '16px' }}
+                />
+                <div className="absolute inset-0 rounded-full pointer-events-none"
+                     style={{
+                       background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.10) 60%, rgba(0,0,0,0.18) 100%)'
+                     }}
+                />
+              </div>
+              <div className="text-center mt-2 font-semibold text-gray-700">Fundraiser</div>
+            </div>
+            {/* Donor - Top Center */}
+            <div className="absolute left-1/2 -translate-x-1/2 top-0">
+              <div className="w-40 h-40 rounded-full ring-4 ring-green-400 bg-white flex items-center justify-center shadow-md relative overflow-hidden">
+                <Image
+                  src="/images/placeholder2.png"
+                  alt="Donor"
+                  width={120}
+                  height={120}
+                  className="object-contain"
+                  style={{ padding: '16px' }}
+                />
+                <div className="absolute inset-0 rounded-full pointer-events-none"
+                     style={{
+                       background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.10) 60%, rgba(0,0,0,0.18) 100%)'
+                     }}
+                />
+              </div>
+              <div className="text-center mt-2 font-semibold text-gray-700">Donor</div>
+            </div>
+            {/* Volunteer - Right (lower) */}
+            <div className="absolute right-0 top-[60%] -translate-y-1/2">
+              <div className="w-40 h-40 rounded-full ring-4 ring-blue-400 bg-white flex items-center justify-center shadow-md relative overflow-hidden">
+                <Image
+                  src="/images/placeholder3.png"
+                  alt="Volunteer"
+                  width={120}
+                  height={120}
+                  className="object-contain"
+                  style={{ padding: '16px' }}
+                />
+                <div className="absolute inset-0 rounded-full pointer-events-none"
+                     style={{
+                       background: 'radial-gradient(ellipse at center, rgba(0,0,0,0.10) 60%, rgba(0,0,0,0.18) 100%)'
+                     }}
+                />
+              </div>
+              <div className="text-center mt-2 font-semibold text-gray-700">Volunteer</div>
+            </div>
           </div>
         </div>
       </section>
