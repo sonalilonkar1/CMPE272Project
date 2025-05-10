@@ -26,8 +26,10 @@ import com.reliefcircle.repository.UserRepository;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.multipart.MultipartFile;
 
+@Slf4j
 @Validated
 @RestController
 @RequestMapping("/api/charities")
@@ -57,11 +59,49 @@ public class CharityController {
             @Valid PaginationRequest paginationRequest,
             Authentication authentication) {
         
+        log.info("Get all charities request - donorId: {}, fundraiserId: {}, page: {}, size: {}", 
+                donorId, fundraiserId, paginationRequest.getPageNumber(), paginationRequest.getPageSize());
+        
         // Check authentication if donorId or fundraiserId is provided
         if (donorId != null || fundraiserId != null) {
-            if (authentication == null || !(authentication.getPrincipal() instanceof User)) {
-                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            if (authentication == null) {
+                log.warn("Authentication required for filtered charity list but no authentication provided");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
             }
+            
+            // Get the user from authentication
+            User user;
+            if (authentication.getPrincipal() instanceof User) {
+                user = (User) authentication.getPrincipal();
+                log.debug("Principal is a User instance: {}", user.getEmail());
+            } else if (authentication.getPrincipal() instanceof UserDetails) {
+                UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+                log.debug("Principal is UserDetails instance, extracting user by email: {}", userDetails.getUsername());
+                user = userRepository.findByEmail(userDetails.getUsername())
+                    .orElseThrow(() -> {
+                        log.error("User not found for email: {}", userDetails.getUsername());
+                        return new IllegalStateException("User not found");
+                    });
+            } else {
+                log.error("Unexpected principal type: {}", 
+                    authentication.getPrincipal() != null ? authentication.getPrincipal().getClass().getName() : "null");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(null);
+            }
+            
+            // Check if the user has the right to access these resources
+            if (donorId != null && !user.getId().equals(donorId) && !user.getRole().equals(User.UserRole.FUNDRAISER)) {
+                log.warn("Access denied: User {} with role {} attempted to access donor data for {}", 
+                    user.getId(), user.getRole(), donorId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            }
+            
+            if (fundraiserId != null && !user.getId().equals(fundraiserId) && !user.getRole().equals(User.UserRole.FUNDRAISER)) {
+                log.warn("Access denied: User {} with role {} attempted to access fundraiser data for {}", 
+                    user.getId(), user.getRole(), fundraiserId);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            }
+            
+            log.debug("User {} authorized to access requested charity data", user.getId());
         }
         
         Page<CharityDto> page;
@@ -76,12 +116,20 @@ public class CharityController {
             )
         );
 
-        if (donorId != null) {
-            page = charityService.getCharitiesByDonor(donorId, pageRequest);
-        } else if (fundraiserId != null) {
-            page = charityService.getCharitiesByFundraiser(fundraiserId, pageRequest);
-        } else {
-            page = charityService.getAllCharities(pageRequest);
+        try {
+            if (donorId != null) {
+                log.debug("Fetching charities for donor: {}", donorId);
+                page = charityService.getCharitiesByDonor(donorId, pageRequest);
+            } else if (fundraiserId != null) {
+                log.debug("Fetching charities for fundraiser: {}", fundraiserId);
+                page = charityService.getCharitiesByFundraiser(fundraiserId, pageRequest);
+            } else {
+                log.debug("Fetching all charities");
+                page = charityService.getAllCharities(pageRequest);
+            }
+        } catch (Exception e) {
+            log.error("Error fetching charities: {}", e.getMessage(), e);
+            throw e;
         }
 
         PaginatedResponse<CharityDto> response = PaginatedResponse.<CharityDto>builder()
@@ -93,6 +141,8 @@ public class CharityController {
             .last(page.isLast())
             .build();
 
+        log.info("Returning {} charities (page {} of {})", 
+            page.getNumberOfElements(), page.getNumber() + 1, page.getTotalPages());
         return ResponseEntity.ok(response);
     }
     
@@ -169,6 +219,9 @@ public class CharityController {
             @RequestParam(value = "file", required = false) MultipartFile file,
             Authentication authentication) {
         
+        log.info("Register charity request - name: {}, organizationName: {}, category: {}", 
+                name, organizationName, category);
+        
         try {
             UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             User user = userRepository.findByEmail(userDetails.getUsername())
@@ -208,23 +261,31 @@ public class CharityController {
             @PathVariable("id") @Positive(message = "Charity ID must be positive") Long id,
             @Valid @RequestBody CharityDto dto,
             Authentication authentication) {
+        log.info("Update charity request - id: {}, name: {}", id, dto.getName());
+        
         try {
             Object principal = authentication.getPrincipal();
             if (!(principal instanceof User user)) {
+                log.error("Invalid authentication type: {}", 
+                    principal != null ? principal.getClass().getName() : "null");
                 throw new IllegalArgumentException("Invalid authentication type");
             }
 
-            if (user.getRole() != User.UserRole.FUNDRAISER && user.getRole() != User.UserRole.ADMIN) {
-                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
+                log.warn("Access denied: User {} with role {} attempted to update charity {}", 
+                    user.getId(), user.getRole(), id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
             }
 
-            // Check if user is the fundraiser of this charity (skip for admin)
-            if (user.getRole() != User.UserRole.ADMIN) {
-                CharityDto existingCharity = charityService.getCharityById(id);
-                if (!existingCharity.getFundraiserId().equals(user.getId())) {
-                    return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-                }
+            // Check if user is the fundraiser of this charity
+            CharityDto existingCharity = charityService.getCharityById(id);
+            if (!existingCharity.getFundraiserId().equals(user.getId())) {
+                log.warn("Access denied: User {} attempted to update charity {} owned by fundraiser {}", 
+                    user.getId(), id, existingCharity.getFundraiserId());
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
             }
+            
+            log.debug("User {} authorized to update charity {}", user.getId(), id);
 
             CharityDto updatedCharity = charityService.updateCharity(id, dto);
             return ResponseEntity.ok(updatedCharity);

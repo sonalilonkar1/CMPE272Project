@@ -103,8 +103,16 @@ class CharityServiceTest {
     @Test
     void testRegisterCharity_Success() {
         // Arrange
+        MockMultipartFile file = new MockMultipartFile(
+            "file", 
+            "test.jpg",
+            MediaType.IMAGE_JPEG_VALUE, 
+            "test image content".getBytes()
+        );
+        testCharityDto.setFile(file);
+        
         when(charityRepository.save(any(Charity.class))).thenReturn(testCharity);
-        when(awsService.uploadFile(anyString(), any(MultipartFile.class))).thenReturn(true);
+        when(awsService.uploadProofDocument(any(MultipartFile.class), anyString())).thenReturn("https://test-bucket.s3.amazonaws.com/test.jpg");
 
         // Act
         CharityDto result = charityService.registerCharity(testCharityDto);
@@ -163,8 +171,17 @@ class CharityServiceTest {
     @Test
     void testUpdateCharity() {
         // Arrange
+        MockMultipartFile file = new MockMultipartFile(
+            "file", 
+            "test.jpg",
+            MediaType.IMAGE_JPEG_VALUE, 
+            "test image content".getBytes()
+        );
+        testCharityDto.setFile(file);
+        
         when(charityRepository.findById(anyLong())).thenReturn(Optional.of(testCharity));
         when(charityRepository.save(any(Charity.class))).thenReturn(testCharity);
+        when(awsService.uploadProofDocument(any(MultipartFile.class), anyString())).thenReturn("https://test-bucket.s3.amazonaws.com/test.jpg");
 
         // Act
         CharityDto result = charityService.updateCharity(1L, testCharityDto);

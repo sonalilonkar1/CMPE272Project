@@ -62,7 +62,7 @@ public class UserController {
         
         Object principal = authentication.getPrincipal();
         if (principal instanceof User user) {
-            if (user.getRole() != User.UserRole.ADMIN) {
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             
@@ -99,8 +99,8 @@ public class UserController {
         
         Object principal = authentication.getPrincipal();
         if (principal instanceof User user) {
-            // Only allow users to view their own profile or admins to view any profile
-            if (!user.getId().equals(id) && user.getRole() != User.UserRole.ADMIN) {
+            // Only allow users to view their own profile or fundraisers to view any profile
+            if (!user.getId().equals(id) && user.getRole() != User.UserRole.FUNDRAISER) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             
@@ -230,7 +230,7 @@ public class UserController {
         
         Object principal = authentication.getPrincipal();
         if (principal instanceof User user) {
-            if (user.getRole() != User.UserRole.FUNDRAISER && user.getRole() != User.UserRole.ADMIN) {
+            if (user.getRole() != User.UserRole.FUNDRAISER) {
                 return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
             }
             
