@@ -55,6 +55,9 @@ public class User implements UserDetails {
     @Builder.Default
     private Boolean isVolunteer = false;
 
+    @Column(name = "stripe_id", nullable = true)
+    private String stripeId;
+
     @Column(name = "user_profile_image_link")
     private String userProfileImageLink;
 

@@ -46,6 +46,7 @@ public class AuthService {
         var jwtToken = jwtService.generateToken(user);
         return AuthResponse.builder()
                 .token(jwtToken)
+                .role(user.getRole())
                 .build();
     }
 
@@ -61,6 +62,7 @@ public class AuthService {
         var jwtToken = jwtService.generateToken(user);
         return AuthResponse.builder()
                 .token(jwtToken)
+                .role(user.getRole())
                 .build();
     }
 
@@ -89,6 +91,7 @@ public class AuthService {
                 var jwtToken = jwtService.generateToken(user);
                 return AuthResponse.builder()
                         .token(jwtToken)
+                        .role(user.getRole())
                         .build();
             }
             throw new RuntimeException("Invalid Google token");
