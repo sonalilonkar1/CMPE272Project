@@ -3,6 +3,7 @@ import authReducer from './features/authSlice';
 import charitiesReducer from './features/charitiesSlice';
 import donationsReducer from './features/donationsSlice';
 import userReducer from './features/userSlice';
+import updatesReducer from './features/updatesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -10,6 +11,7 @@ export const store = configureStore({
     charities: charitiesReducer,
     donations: donationsReducer,
     user: userReducer,
+    updates: updatesReducer,
   },
 });
 

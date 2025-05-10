@@ -38,3 +38,5 @@ export const USER_ENDPOINTS = {
   UPLOAD_AVATAR: `${API_URL}/users/avatar`,
 };
 
+export const FUNDRAISER_UPDATES_ENDPOINT = `${API_URL}/updates/fundraiser/me`;
+
