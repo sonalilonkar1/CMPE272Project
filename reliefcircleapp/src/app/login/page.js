@@ -43,16 +43,25 @@ export default function Login() {
       if (result.token) {
         // Sign in with NextAuth
         const signInResult = await signIn('credentials', {
-        email,
-        password,
+          email,
+          password,
           redirect: false
-      });
+        });
 
         if (signInResult.error) {
-        return;
-      }
+          return;
+        }
 
-      router.push('/dashboard');
+        // Redirect based on user role
+        const role = result.role?.toUpperCase();
+        if (role === 'DONOR') {
+          router.push('/donor');
+        } else if (role === 'FUNDRAISER') {
+          router.push('/fundraiser');
+        } else {
+          // Default fallback
+          router.push('/');
+        }
       }
     } catch (err) {
       console.error('Login error:', err);
@@ -60,7 +69,8 @@ export default function Login() {
   };
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/dashboard' });
+    // We can't determine the role yet, so we'll let the backend handle the redirect
+    signIn('google', { callbackUrl: '/' });
   };
 
   return (

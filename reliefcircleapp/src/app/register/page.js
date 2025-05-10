@@ -59,8 +59,16 @@ export default function Register() {
           // If auto-login fails, redirect to login page
           router.push('/login?registered=true')
         } else {
-          // Registration and login successful, redirect to dashboard
-          router.push('/dashboard')
+          // Registration and login successful, redirect based on role
+          const role = result.role?.toUpperCase()
+          if (role === 'DONOR') {
+            router.push('/donor')
+          } else if (role === 'FUNDRAISER') {
+            router.push('/fundraiser')
+          } else {
+            // Default fallback
+            router.push('/')
+          }
         }
       }
     } catch (err) {
