@@ -25,99 +25,61 @@ import lombok.extern.slf4j.Slf4j;
 public class AWSService {
     private final S3Client s3Client;
     private final SnsClient snsClient;
-    
-    @Value("${cloudfront.url}")
-    private String cloudFrontUrl;
-    
-    @Value("${primary.bucket}")
-    private String primaryBucket;
-    
-    @Value("${sns.topic.arn}")
-    private String snsTopic;
-    
-    public AWSService(@Value("${aws.accessKeyId}") String awsAccessKeyId,
-                      @Value("${aws.secretKey}") String awsSecret,
-                      @Value("${aws.region:us-east-1}") String region) {
-        // Create credentials provider
+    private final String primaryBucket;
+    private final String snsTopic;
+    private final String region;
+
+    public AWSService(
+            @Value("${aws.accessKeyId}") String awsAccessKeyId,
+            @Value("${aws.secretKey}") String awsSecret,
+            @Value("${aws.region:us-east-2}") String region,
+            @Value("${aws.s3.bucket-name}") String primaryBucket,
+            @Value("${sns.topic.arn}") String snsTopic
+    ) {
+        this.primaryBucket = primaryBucket;
+        this.snsTopic = snsTopic;
+        this.region = region;
+
         AwsBasicCredentials credentials = AwsBasicCredentials.create(awsAccessKeyId, awsSecret);
         StaticCredentialsProvider credentialsProvider = StaticCredentialsProvider.create(credentials);
-        
-        // Create S3 client
+
         this.s3Client = S3Client.builder()
-                .region(Region.of(region.toUpperCase()))
+                .region(Region.of(region))
                 .credentialsProvider(credentialsProvider)
                 .build();
-        
-        // Create SNS client
+
         this.snsClient = SnsClient.builder()
-                .region(Region.of(region.toUpperCase()))
+                .region(Region.of(region))
                 .credentialsProvider(credentialsProvider)
                 .build();
+
+        log.info("Bucket Name: {}", primaryBucket);
     }
-    
-    /**
-     * Uploads a file to S3 with the provided key name
-     * @param keyName The key name for the file in S3
-     * @param file The file to upload
-     * @return true if the upload was successful, false otherwise
-     */
-    public boolean uploadFile(String keyName, MultipartFile file) {
-        final int MAX_RETRIES = 3;
-        for (int attempt = 1; attempt <= MAX_RETRIES; attempt++) {
-            try (InputStream inputStream = file.getInputStream()) {
-                PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                    .bucket(primaryBucket)
-                    .key(keyName)
-                    .contentType(file.getContentType())
-                    .build();
-                
-                s3Client.putObject(putObjectRequest, software.amazon.awssdk.core.sync.RequestBody.fromInputStream(inputStream, file.getSize()));
-                log.info("Successfully uploaded file: {}", keyName);
-                return true;
-            } catch (IOException e) {
-                log.error("Upload failed (attempt {}/{}): {}", attempt, MAX_RETRIES, e.getMessage(), e);
-                
-                if (attempt == MAX_RETRIES) {
-                    return false;
-                }
-                
-                try {
-                    Thread.sleep(1000 * attempt); // Exponential backoff
-                } catch (InterruptedException ie) {
-                    Thread.currentThread().interrupt();
-                    return false;
-                }
-            }
-        }
-        return false;
-    }
-    
-    /**
-     * Uploads a file to S3 and returns the URL for the uploaded file
-     * @param file The file to upload
-     * @param folder The folder path in S3
-     * @return The URL of the uploaded file
-     */
+
     public String uploadProofDocument(MultipartFile file, String folder) {
         String fileName = folder + "/" + java.util.UUID.randomUUID() + "-" + file.getOriginalFilename();
 
         try (InputStream inputStream = file.getInputStream()) {
             PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(primaryBucket)
-                .key(fileName)
-                .contentType(file.getContentType())
-                .build();
-            
-            s3Client.putObject(putObjectRequest, software.amazon.awssdk.core.sync.RequestBody.fromInputStream(inputStream, file.getSize()));
+                    .bucket(primaryBucket)
+                    .key(fileName)
+                    .contentType(file.getContentType())
+                    .build();
+
+            s3Client.putObject(
+                    putObjectRequest,
+                    software.amazon.awssdk.core.sync.RequestBody.fromInputStream(inputStream, file.getSize())
+            );
+
             log.info("Successfully uploaded file: {}", fileName);
-            
-            return "https://" + primaryBucket + ".s3.amazonaws.com/" + fileName;
+
+            return "https://" + primaryBucket + ".s3." + region + ".amazonaws.com/" + fileName;
         } catch (IOException e) {
             log.error("Failed to upload file to S3: {}", e.getMessage(), e);
             throw new RuntimeException("Failed to upload file to S3", e);
         }
     }
-    
+
     public boolean pubMessageToFundraiser(CharityDto charityDto) {
         try {
             PublishRequest request = PublishRequest.builder()
@@ -125,7 +87,7 @@ public class AWSService {
                     .topicArn(snsTopic)
                     .subject("Charity Registration: " + charityDto.getName())
                     .build();
-            
+
             var result = snsClient.publish(request);
             log.info("SNS Message sent. Message ID: {}", result.messageId());
             return true;
@@ -133,12 +95,5 @@ public class AWSService {
             log.error("SNS Publish failed: {}", e.getMessage(), e);
             return false;
         }
-    }
-    
-    /**
-     * Alias for backward compatibility
-     */
-    public boolean pubMessageToAdmin(CharityDto charityDto) {
-        return pubMessageToFundraiser(charityDto);
     }
 }

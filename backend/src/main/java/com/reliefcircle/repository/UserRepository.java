@@ -21,13 +21,14 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     @Query(value = """
         SELECT u.*
         FROM users u
-        WHERE u.role = 'VOLUNTEER'
+        WHERE u.role = 'DONOR'
+          AND u.is_volunteer = true
           AND u.id NOT IN (
-              SELECT d.user_id
+              SELECT d.donor_id
               FROM donations d
               WHERE d.charity_id = :charityId
           )
-        ORDER BY RANDOM()
+        ORDER BY RAND()
         LIMIT :limit
     """, nativeQuery = true)
     List<User> findRandomVolunteersNotDonatedToCharity(@Param("charityId") Long charityId, @Param("limit") int limit);

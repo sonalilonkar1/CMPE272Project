@@ -14,6 +14,7 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import java.util.UUID;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -390,8 +391,10 @@ public class UpdateController {
                 .update(updateRepository.findById(createdUpdate.getId())
                         .orElseThrow(() -> new RuntimeException("Update not found with ID: " + createdUpdate.getId())))
                 .donor(volunteer)
-                .rating(null) // Default rating (e.g., null if not rated yet)
+                .rating(0) // Default rating (e.g., null if not rated yet)
                 .comment(null) // No comment initially
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
                 .build();
 
         updateRatingRepository.save(updateRating);

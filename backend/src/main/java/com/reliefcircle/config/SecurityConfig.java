@@ -91,8 +91,8 @@ public class SecurityConfig {
                         // Donor endpoints
                         .requestMatchers(HttpMethod.DELETE, "/api/updates/ratings/{ratingId}").hasAuthority("ROLE_DONOR")
                         // Volunteer endpoints
-                        .requestMatchers(HttpMethod.POST, "/api/donations/*/verify").hasAuthority("ROLE_VOLUNTEER") // Fix for API 18
-                        .requestMatchers(HttpMethod.GET, "/api/updates/volunteer/me/ratings").hasAuthority("ROLE_VOLUNTEER") // API 24
+                        .requestMatchers(HttpMethod.POST, "/api/donations/*/verify").hasAuthority("ROLE_DONOR") // Fix for API 18
+                        .requestMatchers("/api/updates/volunteer/me/ratings").access(new WebExpressionAuthorizationManager("hasAuthority('ROLE_DONOR') and authentication.principal.isVolunteer == true"))
                         // Proof endpoints
                         .requestMatchers(HttpMethod.POST, "/api/proofs/charity/{charityId}/upload").hasAuthority("ROLE_FUNDRAISER") // Fix for API 19
                         // User image endpoints with ownership check
