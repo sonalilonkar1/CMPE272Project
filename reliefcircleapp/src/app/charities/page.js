@@ -39,7 +39,7 @@ const CharityCardSkeleton = () => (
 export default function Charities() {
   const dispatch = useDispatch();
   const { charities, currentPage, totalPages, totalElements, pageSize, loading } = useSelector((state) => state.charities);
-  const [page, setPage] = useState(0);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
     dispatch(fetchCharities({ page, size: pageSize }));

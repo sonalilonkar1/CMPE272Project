@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { fetchFundraiserCharities } from '@/redux/features/charitiesSlice'
 import { useSearchParams } from 'next/navigation'
 import UpdateModal from '@/components/UpdateModal'
+import TransactionsTab from '@/components/TransactionsTab'
 
 export default function FundraiserDashboard() {
   const dispatch = useDispatch()
@@ -42,6 +43,7 @@ export default function FundraiserDashboard() {
     { id: 'overview', label: 'Overview', href: '/fundraiser?tab=overview' },
     { id: 'charities', label: 'My Charities', href: '/fundraiser?tab=charities' },
     { id: 'updates', label: 'Updates', href: '/fundraiser?tab=updates' },
+    { id: 'transactions', label: 'Transactions', href: '/fundraiser?tab=transactions' },
   ]
 
   // Mock updates data - replace with actual data from your API
@@ -88,6 +90,8 @@ export default function FundraiserDashboard() {
               ? 'Fundraiser Overview' 
               : currentTab === 'updates'
               ? 'Charity Updates'
+              : currentTab === 'transactions'
+              ? 'Transactions'
               : 'My Charities'}
           </h1>
           <p className="mt-2 text-sm text-gray-600">
@@ -95,6 +99,8 @@ export default function FundraiserDashboard() {
               ? 'View your fundraising statistics and overall impact'
               : currentTab === 'updates'
               ? 'Keep your donors informed about charity progress and milestones'
+              : currentTab === 'transactions'
+              ? 'Manage your payment processing and view transaction history'
               : 'Manage your charitable organizations and campaigns'
             }
           </p>
@@ -181,6 +187,8 @@ export default function FundraiserDashboard() {
                 ))}
               </div>
             </div>
+          ) : currentTab === 'transactions' ? (
+            <TransactionsTab fundraiserId={fundraiserId} />
           ) : (
             <div className="space-y-6">
               {/* Charities Content */}
