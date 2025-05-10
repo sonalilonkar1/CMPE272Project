@@ -32,18 +32,9 @@ export const DONATION_ENDPOINTS = {
 
 // User endpoints
 export const USER_ENDPOINTS = {
-  PROFILE: `${API_URL}/users/profile`,
+  PROFILE: `${API_URL}/users/me`,
   UPDATE_PROFILE: `${API_URL}/users/profile`,
   CHANGE_PASSWORD: `${API_URL}/users/change-password`,
   UPLOAD_AVATAR: `${API_URL}/users/avatar`,
 };
 
-// Admin endpoints
-export const ADMIN_ENDPOINTS = {
-  DASHBOARD: `${API_URL}/admin/dashboard`,
-  USERS: `${API_URL}/admin/users`,
-  STATS: `${API_URL}/admin/stats`,
-  PENDING_CHARITIES: `${API_URL}/admin/charities/pending`,
-  APPROVED_CHARITIES: `${API_URL}/admin/charities/approved`,
-  REJECTED_CHARITIES: `${API_URL}/admin/charities/rejected`,
-}; 

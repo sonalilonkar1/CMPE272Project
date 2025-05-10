@@ -218,12 +218,12 @@ export default function DonorDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2 mt-10">
             {currentTab === 'overview' ? 'Your Profile' : 
              currentTab === 'impact' ? 'Your Impact' : 
              'Charity Updates'}
           </h1>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="text-base text-gray-600">
             {currentTab === 'overview'
               ? 'Manage your profile and account settings'
               : currentTab === 'impact'

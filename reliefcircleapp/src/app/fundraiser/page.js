@@ -13,10 +13,6 @@ export default function FundraiserDashboard() {
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
   
   const { 
-    fundraiserCharities, 
-    fundraiserCharitiesPage,
-    fundraiserCharitiesTotalPages,
-    fundraiserCharitiesTotalElements,
     status, 
     error 
   } = useSelector((state) => state.charities)
@@ -87,7 +83,7 @@ export default function FundraiserDashboard() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Page Header */}
         <div className="mb-8">
-          <h1 className="text-2xl font-bold text-gray-900">
+          <h1 className="text-2xl font-bold text-gray-900 mt-10">
             {currentTab === 'overview' 
               ? 'Fundraiser Overview' 
               : currentTab === 'updates'
