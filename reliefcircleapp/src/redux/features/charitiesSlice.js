@@ -23,11 +23,7 @@ export const fetchCharityById = createAsyncThunk(
   'charities/fetchCharityById',
   async (charityId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(CHARITY_ENDPOINTS.DETAIL(charityId), {
-        headers: {
-          'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRE9OT1IiLCJzdWIiOiJ0ZXN0dXNlcjJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDU4NjM4MTEsImV4cCI6MTc0NTk1MDIxMX0.EhEe-STkhRAaE-H8QibTIIV_RDQ4FqSnMlvp2txv0Kc13t_7eNgsAMAKwG6i937vz1TjGzu1g5xUS-pjT8q-3g'
-        }
-      });
+      const response = await axios.get(CHARITY_ENDPOINTS.DETAIL(charityId));
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch charity details');

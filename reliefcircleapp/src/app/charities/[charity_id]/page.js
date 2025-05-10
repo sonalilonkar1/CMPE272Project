@@ -1,33 +1,32 @@
-import { Suspense } from 'react'
+'use client'
+import { Suspense, useEffect } from 'react'
 import CharityContent, { CharityDetailSkeleton } from './CharityContent'
-import { CHARITY_ENDPOINTS } from '@/utils/api'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchCharityById } from '@/redux/features/charitiesSlice'
 
-async function getCharity(id) {
-  try {
-    const response = await fetch(CHARITY_ENDPOINTS.DETAIL(id), {
-      headers: {
-        'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRE9OT1IiLCJzdWIiOiJ0ZXN0dXNlcjJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDU4NjM4MTEsImV4cCI6MTc0NTk1MDIxMX0.EhEe-STkhRAaE-H8QibTIIV_RDQ4FqSnMlvp2txv0Kc13t_7eNgsAMAKwG6i937vz1TjGzu1g5xUS-pjT8q-3g'
-      },
-      cache: 'no-store' // This ensures fresh data on each request
-    });
-    
-    if (!response.ok) {
-      throw new Error('Failed to fetch charity data');
-    }
-    
-    return response.json();
-  } catch (error) {
-    console.error('Error fetching charity:', error);
-    throw error;
+export default function CharityPage({ params }) {
+  const dispatch = useDispatch();
+  const { currentCharity, status, error } = useSelector((state) => state.charities);
+
+  useEffect(() => {
+    dispatch(fetchCharityById(params.charity_id));
+  }, [dispatch, params.charity_id]);
+
+  if (status === 'loading') {
+    return <CharityDetailSkeleton />;
   }
-}
 
-export default async function CharityPage({ params }) {
-  const charity = await getCharity(params.charity_id);
+  if (status === 'failed') {
+    return <div className="text-red-600 p-8">Error: {error || 'Failed to fetch charity data.'}</div>;
+  }
+
+  if (!currentCharity) {
+    return <div className="p-8">No charity found.</div>;
+  }
 
   return (
     <Suspense fallback={<CharityDetailSkeleton />}>
-      <CharityContent initialData={charity} />
+      <CharityContent initialData={currentCharity} />
     </Suspense>
   );
 }
