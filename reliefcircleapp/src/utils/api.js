@@ -42,4 +42,5 @@ export const FUNDRAISER_UPDATES_ENDPOINT = `${API_URL}/updates/fundraiser/me`;
 
 // Updates endpoints
 export const UPDATES_ENDPOINT = `${API_URL}/updates`;
+export const VOLUNTEER_UPDATES_ENDPOINT = `${API_URL}/updates/volunteer/me/ratings`;
 
