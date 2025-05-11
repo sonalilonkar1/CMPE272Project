@@ -34,9 +34,29 @@ export const fetchCharityById = createAsyncThunk(
 // Async thunk for creating a new charity
 export const createCharity = createAsyncThunk(
   'charities/createCharity',
-  async (charityData, { rejectWithValue }) => {
+  async ({ charityData, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(CHARITY_ENDPOINTS.CREATE, charityData);
+      const formData = new FormData();
+      formData.append('name', charityData.name);
+      formData.append('description', charityData.description);
+      formData.append('organizationName', charityData.organizationName);
+      formData.append('targetAmount', charityData.targetAmount);
+      formData.append('category', charityData.category);
+      formData.append('location', charityData.location);
+      formData.append('website', charityData.website);
+      if (charityData.documents && charityData.documents[0]) {
+        formData.append('file', charityData.documents[0]);
+      }
+      const response = await axios.post(
+        CHARITY_ENDPOINTS.CREATE,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        }
+      );
       showToast.success('Charity created successfully!');
       return response.data;
     } catch (error) {
