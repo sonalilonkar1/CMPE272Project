@@ -159,7 +159,7 @@ public class UpdateService {
      * Update an existing update
      */
     @Transactional
-    public UpdateDto updateUpdate(Long id, UpdateDto updateDto, UUID userId) {
+    public UpdateDto updateUpdate1(Long id, UpdateDto updateDto, UUID userId) {
         Update update = updateRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Update not found with ID: " + id));
         
@@ -232,6 +232,9 @@ public class UpdateService {
             update.recalculateAverageRating();
             updateRepository.save(update);
             
+            // Check if update should be approved
+            checkAndUpdateApprovalStatus(updateId);
+            
             return convertToDto(savedRating);
         } else {
             // Create new rating
@@ -247,6 +250,9 @@ public class UpdateService {
             // Add the rating to the update and recalculate average
             update.addRating(savedRating);
             updateRepository.save(update);
+            
+            // Check if update should be approved
+            checkAndUpdateApprovalStatus(updateId);
             
             return convertToDto(savedRating);
         }
@@ -366,5 +372,45 @@ public class UpdateService {
 
         // Convert to DTO
         return ratings.map(this::convertToDto);
+    }
+
+    /**
+     * Get updates for a specific charity
+     * @param charityId The charity ID
+     * @param pageable Pagination information
+     * @return Page of updates for the charity
+     */
+    @Transactional(readOnly = true)
+    public Page<UpdateDto> getUpdatesByCharity(Long charityId, Pageable pageable) {
+        log.debug("Fetching updates for charity ID: {}", charityId);
+        
+        // Verify charity exists
+        charityRepository.findById(charityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + charityId));
+
+        return updateRepository.findByCharityId(charityId, pageable)
+                .map(this::convertToDto);
+    }
+
+    @Transactional
+    public void checkAndUpdateApprovalStatus(Long updateId) {
+        Update update = updateRepository.findById(updateId)
+            .orElseThrow(() -> new ResourceNotFoundException("Update not found with ID: " + updateId));
+            
+        // Get total number of volunteers
+        long totalVolunteers = userRepository.countByRoleAndIsVolunteerTrue(User.UserRole.DONOR);
+        
+        // Get total ratings for this update
+        long totalRatings = updateRatingRepository.countByUpdateId(updateId);
+        
+        // Get average rating
+        Double averageRating = updateRatingRepository.getAverageRatingForUpdate(updateId);
+        
+        // Check if all volunteers have rated and average rating is 7 or more
+        if (totalRatings >= totalVolunteers && averageRating != null && averageRating >= 7.0) {
+            update.setIsApproved(true);
+            updateRepository.save(update);
+            log.info("Update {} has been approved with average rating {}", updateId, averageRating);
+        }
     }
 }

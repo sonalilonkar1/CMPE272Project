@@ -23,6 +23,4 @@ public class UpdateRatingDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     
-    // Optional fields to indicate whether the current user is the author of this rating
-    private boolean isCurrentUserRating;
 }

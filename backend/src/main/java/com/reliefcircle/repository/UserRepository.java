@@ -33,4 +33,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     """, nativeQuery = true)
     List<User> findRandomVolunteersNotDonatedToCharity(@Param("charityId") Long charityId, @Param("limit") int limit);
 
+    @Query("SELECT COUNT(u) FROM User u WHERE u.role = :role AND u.isVolunteer = true")
+    long countByRoleAndIsVolunteerTrue(@Param("role") User.UserRole role);
 }

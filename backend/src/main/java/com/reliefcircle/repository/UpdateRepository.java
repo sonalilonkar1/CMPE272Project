@@ -58,4 +58,9 @@ public interface UpdateRepository extends JpaRepository<Update, Long> {
      * Count updates by fundraiser
      */
     Long countByFundraiserId(UUID fundraiserId);
+
+    /**
+     * Find all updates for a specific charity
+     */
+    Page<Update> findByCharityId(Long charityId, Pageable pageable);
 }

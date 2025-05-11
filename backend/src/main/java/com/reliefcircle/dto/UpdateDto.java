@@ -33,7 +33,5 @@ public class UpdateDto {
     
     // Ratings details
     private List<UpdateRatingDto> ratings;
-    
-    // User's own rating if they've rated this update
-    private UpdateRatingDto userRating;
+   
 }
