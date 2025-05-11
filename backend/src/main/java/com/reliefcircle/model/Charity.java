@@ -2,10 +2,8 @@ package com.reliefcircle.model;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Getter;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 
 import jakarta.persistence.*;
 import java.math.BigDecimal;
@@ -13,12 +11,10 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
 
-@AllArgsConstructor
-@ToString
+@Data
 @Builder
 @NoArgsConstructor
-@Getter
-@Setter
+@AllArgsConstructor
 @Entity
 @Table(name = "charities")
 public class Charity {
@@ -59,6 +55,9 @@ public class Charity {
 
     @Column(name = "file_url")
     private String fileUrl;
+
+    @Column(name = "fundraiser_stripe_id")
+    private String fundraiserStripeId;
 
     @OneToMany(mappedBy = "charity", fetch = FetchType.LAZY)
     private List<Donation> donations;

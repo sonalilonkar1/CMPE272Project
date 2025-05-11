@@ -68,6 +68,7 @@ public class CharityService {
             .fundraiserId(charity.getFundraiser() != null ? charity.getFundraiser().getId() : null)
             .fundraiserName(charity.getFundraiser() != null ? charity.getFundraiser().getFullName() : null)
             .fundraiserEmail(charity.getFundraiser() != null ? charity.getFundraiser().getEmail() : null)
+            .fundraiserStripeId(charity.getFundraiser() != null ? charity.getFundraiser().getStripeId() : null)
             .fileUrl(charity.getFileUrl())
             .build();
     }
@@ -90,7 +91,6 @@ public class CharityService {
 
     public CharityDto registerCharity(CharityDto dto) {
         log.info("Register Req: {}", dto);
-        System.out.println("Target amount in DTO: " + dto.getTargetAmount());
 
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Charity name is required");
@@ -103,7 +103,6 @@ public class CharityService {
         }
 
         BigDecimal targetAmount = dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO;
-        System.out.println("Setting target amount to: " + targetAmount);
 
         Charity charity = Charity.builder()
             .name(dto.getName())
@@ -114,6 +113,7 @@ public class CharityService {
             .raisedAmount(BigDecimal.ZERO)
             .isVerified(false)
             .fundraiser(fundraiser)
+            .fundraiserStripeId(fundraiser.getStripeId())
             .build();
 
         try {
@@ -130,7 +130,6 @@ public class CharityService {
 
             // Save charity to the database
             Charity registeredCharity = charityRepository.save(charity);
-            System.out.println("Saved charity with target amount: " + registeredCharity.getTargetAmount());
             log.info("Charity saved: {}", registeredCharity);
             
             // Convert to DTO for response
@@ -140,9 +139,7 @@ public class CharityService {
             if (registeredCharity.getFileUrl() != null) {
                 saved.setFileUrl(registeredCharity.getFileUrl());
             }
-            
-            System.out.println("Converted DTO target amount: " + saved.getTargetAmount());
-            
+                        
             // Notify fundraiser about the new charity
             awsService.pubMessageToFundraiser(saved);
             return saved;

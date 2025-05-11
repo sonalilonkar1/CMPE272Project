@@ -337,28 +337,6 @@ public class UpdateService {
     }
     
     /**
-     * Convert UpdateDto with user rating
-     */
-    private UpdateDto convertToDtoWithUserRating(Update update, UUID userId) {
-        UpdateDto dto = convertToDto(update);
-        
-        // Add user's rating if available
-        if (userId != null) {
-            Optional<UpdateRating> userRating = update.getRatings().stream()
-                    .filter(r -> r.getDonor().getId().equals(userId))
-                    .findFirst();
-            
-            userRating.ifPresent(rating -> {
-                UpdateRatingDto ratingDto = convertToDto(rating);
-                ratingDto.setCurrentUserRating(true);
-                dto.setUserRating(ratingDto);
-            });
-        }
-        
-        return dto;
-    }
-
-    /**
      * Send notification to volunteer about a new update
      * @param volunteer
      * @param update

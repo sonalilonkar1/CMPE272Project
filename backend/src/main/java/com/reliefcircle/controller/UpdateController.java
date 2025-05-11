@@ -119,8 +119,11 @@ public class UpdateController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        log.info("User role: {}", volunteer.getRole());
+
         // Ensure the user is a volunteer
-        if (volunteer.getRole() != User.UserRole.VOLUNTEER) {
+        if (!volunteer.getIsVolunteer()) {
+            log.warn("User is not a volunteer");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
