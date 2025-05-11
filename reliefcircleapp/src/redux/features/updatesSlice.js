@@ -1,18 +1,21 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { showToast } from '@/components/Toast';
-import { FUNDRAISER_UPDATES_ENDPOINT } from '@/utils/api';
+import { FUNDRAISER_UPDATES_ENDPOINT, UPDATES_ENDPOINT } from '@/utils/api';
 
-// Async thunk for fetching fundraiser updates
+// Async thunk for fetching fundraiser updates with pagination
 export const fetchFundraiserUpdates = createAsyncThunk(
   'updates/fetchFundraiserUpdates',
-  async ({ token }, { rejectWithValue }) => {
+  async ({ token, page = 1, pageSize = 100 }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(FUNDRAISER_UPDATES_ENDPOINT, {
-        headers: {
-          'Authorization': `Bearer ${token}`
+      const response = await axios.get(
+        `${FUNDRAISER_UPDATES_ENDPOINT}?page=${page}&pageSize=${pageSize}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
         }
-      });
+      );
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to fetch fundraiser updates';
@@ -22,8 +25,45 @@ export const fetchFundraiserUpdates = createAsyncThunk(
   }
 );
 
+// Async thunk for sending a new update
+export const sendFundraiserUpdate = createAsyncThunk(
+  'updates/sendFundraiserUpdate',
+  async ({ text, file, token, charityId }, { dispatch, rejectWithValue }) => {
+    try {
+      const formData = new FormData();
+      formData.append('text', text);
+      formData.append('charityId', charityId);
+      if (file) {
+        formData.append('file', file);
+      }
+      const response = await axios.post(
+        UPDATES_ENDPOINT,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      showToast.success('Update sent successfully!');
+      // Refetch updates after sending
+      dispatch(fetchFundraiserUpdates({ token }));
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to send update';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   updates: [],
+  currentPage: 0,
+  totalPages: 0,
+  totalElements: 0,
+  pageSize: 10,
   status: 'idle',
   error: null
 };
@@ -44,7 +84,11 @@ const updatesSlice = createSlice({
       })
       .addCase(fetchFundraiserUpdates.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.updates = action.payload;
+        state.updates = action.payload.content || action.payload;
+        state.currentPage = action.payload.pageNumber ?? 0;
+        state.totalPages = action.payload.totalPages ?? 0;
+        state.totalElements = action.payload.totalElements ?? 0;
+        state.pageSize = action.payload.pageSize ?? 10;
         state.error = null;
       })
       .addCase(fetchFundraiserUpdates.rejected, (state, action) => {

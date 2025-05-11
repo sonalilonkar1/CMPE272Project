@@ -40,3 +40,6 @@ export const USER_ENDPOINTS = {
 
 export const FUNDRAISER_UPDATES_ENDPOINT = `${API_URL}/updates/fundraiser/me`;
 
+// Updates endpoints
+export const UPDATES_ENDPOINT = `${API_URL}/updates`;
+
