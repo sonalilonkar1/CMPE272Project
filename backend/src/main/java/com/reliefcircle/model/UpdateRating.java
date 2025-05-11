@@ -31,8 +31,10 @@ public class UpdateRating {
     @JoinColumn(name = "donor_id", nullable = false)
     private User donor;
 
+    
     @Column(nullable = false)
-    private Integer rating;
+    @Builder.Default
+    private Integer rating = 0;
 
     @Column(columnDefinition = "TEXT")
     private String comment;

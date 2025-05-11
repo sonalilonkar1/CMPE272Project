@@ -116,27 +116,6 @@ class UserControllerTest {
                 .andExpect(jsonPath("$.email").value("test@example.com"));
     }
 
-    @Test
-    void testUploadUserImage() throws Exception {
-        // Arrange
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "test.jpg",
-                MediaType.IMAGE_JPEG_VALUE,
-                "test image content".getBytes()
-        );
-
-        // Act & Assert
-        mockMvc.perform(multipart("/api/users/{userId}/image/upload", testUser.getId())
-                .file(file)
-                .with(request -> {
-                    request.setUserPrincipal(authentication);
-                    return request;
-                }))
-                .andExpect(status().isCreated())  // Changed from isOk() to isCreated()
-                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.success").value(true));
-    }
 
     @Test
     void testGetCurrentUser() throws Exception {

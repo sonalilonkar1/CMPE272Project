@@ -25,10 +25,26 @@ export const fetchUserProfile = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching Stripe account info and charges
+export const fetchStripeAccountInfo = createAsyncThunk(
+  'user/fetchStripeAccountInfo',
+  async (stripeId, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`/api/stripe-account-info?stripeId=${stripeId}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || 'Failed to fetch Stripe account info');
+    }
+  }
+);
+
 const initialState = {
   profile: null,
   loading: false,
-  error: null
+  error: null,
+  stripeAccount: null,
+  stripeAccountLoading: false,
+  stripeAccountError: null,
 };
 
 const userSlice = createSlice({
@@ -52,6 +68,20 @@ const userSlice = createSlice({
       .addCase(fetchUserProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+      })
+      // Stripe account info
+      .addCase(fetchStripeAccountInfo.pending, (state) => {
+        state.stripeAccountLoading = true;
+        state.stripeAccountError = null;
+      })
+      .addCase(fetchStripeAccountInfo.fulfilled, (state, action) => {
+        state.stripeAccountLoading = false;
+        state.stripeAccount = action.payload;
+      })
+      .addCase(fetchStripeAccountInfo.rejected, (state, action) => {
+        state.stripeAccountLoading = false;
+        state.stripeAccountError = action.payload;
+        state.stripeAccount = null;
       });
   }
 });
