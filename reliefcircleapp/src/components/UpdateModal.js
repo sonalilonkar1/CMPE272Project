@@ -10,9 +10,13 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
   const [message, setMessage] = useState('')
   const [media, setMedia] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [fileError, setFileError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (fileError) {
+      return
+    }
     setIsLoading(true)
 
     try {
@@ -25,6 +29,7 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
 
       setMessage('')
       setMedia(null)
+      setFileError('')
       onClose()
     } catch (error) {
       console.error('Error sending update:', error)
@@ -35,9 +40,31 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
 
   const handleMediaChange = (e) => {
     const file = e.target.files[0]
+    setFileError('')
+    
     if (file) {
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+      if (!allowedTypes.includes(file.type)) {
+        setFileError('Please upload an image (JPG, PNG, GIF, WEBP) or PDF file')
+        return
+      }
+
+      // Check file size (exactly 10MB)
+      const maxSize = 10 * 1024 * 1024 // 10MB in bytes
+      if (file.size > maxSize) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2)
+        setFileError(`File size (${fileSizeMB}MB) exceeds the 10MB limit`)
+        return
+      }
+
       setMedia(file)
     }
+  }
+
+  const handleRemoveFile = () => {
+    setMedia(null)
+    setFileError('')
   }
 
   if (!isOpen) return null
@@ -83,10 +110,10 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
             {/* Media Upload */}
             <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium text-gray-900">Upload photos or videos</h3>
-                <span className="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded">Recommended</span>
+                <h3 className="text-sm font-medium text-gray-900">Upload file</h3>
+                <span className="text-xs text-violet-600 bg-violet-50 px-2 py-1 rounded">Optional</span>
               </div>
-              <p className="text-sm text-gray-500 mb-3">Updates with media help increase donations.</p>
+              <p className="text-sm text-gray-500 mb-3">Share images or PDF documents to support your update.</p>
               
               <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
                 {media ? (
@@ -94,7 +121,7 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
                     <p className="text-sm text-gray-600">{media.name}</p>
                     <button
                       type="button"
-                      onClick={() => setMedia(null)}
+                      onClick={handleRemoveFile}
                       className="text-sm text-red-600 hover:text-red-700"
                     >
                       Remove
@@ -115,20 +142,26 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
                       id="media-upload"
                       type="file"
                       className="hidden"
-                      accept="image/*,video/*"
+                      accept="image/*,.pdf"
                       onChange={handleMediaChange}
                     />
+                    <p className="text-xs text-gray-500 mt-2">
+                      JPG, PNG, GIF, WEBP, or PDF (max 10MB)
+                    </p>
                   </div>
                 )}
               </div>
+              {fileError && (
+                <p className="mt-2 text-sm text-red-600">{fileError}</p>
+              )}
             </div>
 
             {/* Submit Button */}
             <button
               type="submit"
-              disabled={isLoading || !message.trim()}
+              disabled={isLoading || !message.trim() || fileError}
               className={`w-full rounded-lg px-4 py-3 text-sm font-medium text-white 
-                ${isLoading || !message.trim()
+                ${isLoading || !message.trim() || fileError
                   ? 'bg-gray-300 cursor-not-allowed'
                   : 'bg-violet-600 hover:bg-violet-700'
                 }`}

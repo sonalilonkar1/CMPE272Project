@@ -20,9 +20,14 @@ export default function NewCharityForm() {
     website: '',
     documents: [],
   })
+  const [selectedFile, setSelectedFile] = useState(null)
+  const [fileError, setFileError] = useState('')
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (fileError) {
+      return
+    }
     try {
       const result = await dispatch(createCharity({
         charityData: formData,
@@ -56,11 +61,39 @@ export default function NewCharityForm() {
   }
 
   const handleFileChange = (e) => {
-    const files = Array.from(e.target.files)
+    const file = e.target.files[0]
+    setFileError('')
+    
+    if (file) {
+      // Check file type
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+      if (!allowedTypes.includes(file.type)) {
+        setFileError('Please upload an image file (JPG, PNG, GIF, or WEBP)')
+        return
+      }
+
+      // Check file size (5MB)
+      const maxSize = 5 * 1024 * 1024 // 5MB in bytes
+      if (file.size > maxSize) {
+        setFileError('Image size should be less than 5MB')
+        return
+      }
+
+      setSelectedFile(file)
+      setFormData(prev => ({
+        ...prev,
+        documents: [file]
+      }))
+    }
+  }
+
+  const handleRemoveFile = () => {
+    setSelectedFile(null)
     setFormData(prev => ({
       ...prev,
-      documents: files
+      documents: []
     }))
+    setFileError('')
   }
 
   return (
@@ -143,66 +176,97 @@ export default function NewCharityForm() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Location *
+                      Organization Name
                     </label>
                     <input
                       type="text"
-                      name="location"
-                      value={formData.location}
+                      name="organizationName"
+                      value={formData.organizationName}
                       onChange={handleChange}
-                      required
                       className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter location"
+                      placeholder="Enter organization name"
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Website
+                    </label>
+                    <input
+                      type="url"
+                      name="website"
+                      value={formData.website}
+                      onChange={handleChange}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      placeholder="Enter website URL"
+                    />
+                  </div>
                 </div>
               </div>
 
               {/* Documents */}
               <div className="space-y-4">
-                <h2 className="!text-lg !mb-4">Required Document</h2>
+                <h2 className="!text-lg !mb-4">Required Image</h2>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Upload Document *
+                    Upload Image *
                   </label>
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl">
                     <div className="space-y-1 text-center">
-                      <svg
-                        className="mx-auto h-12 w-12 text-gray-400"
-                        stroke="currentColor"
-                        fill="none"
-                        viewBox="0 0 48 48"
-                        aria-hidden="true"
-                      >
-                        <path
-                          d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                          strokeWidth={2}
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                        />
-                      </svg>
-                      <div className="flex text-sm text-gray-600">
-                        <label
-                          htmlFor="file-upload"
-                          className="relative cursor-pointer bg-white rounded-md font-medium text-violet-600 hover:text-violet-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-violet-500"
-                        >
-                          <span>Upload file</span>
-                          <input
-                            id="file-upload"
-                            name="document"
-                            type="file"
-                            onChange={handleFileChange}
-                            className="sr-only"
-                          />
-                        </label>
-                        <p className="pl-1">or drag and drop</p>
-                      </div>
-                      <p className="text-xs text-gray-500">
-                        PDF, DOC, DOCX up to 10MB
-                      </p>
+                      {selectedFile ? (
+                        <div className="space-y-2">
+                          <p className="text-sm text-gray-600">{selectedFile.name}</p>
+                          <button
+                            type="button"
+                            onClick={handleRemoveFile}
+                            className="text-sm text-red-600 hover:text-red-700"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <svg
+                            className="mx-auto h-12 w-12 text-gray-400"
+                            stroke="currentColor"
+                            fill="none"
+                            viewBox="0 0 48 48"
+                            aria-hidden="true"
+                          >
+                            <path
+                              d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
+                              strokeWidth={2}
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            />
+                          </svg>
+                          <div className="flex text-sm text-gray-600">
+                            <label
+                              htmlFor="file-upload"
+                              className="relative cursor-pointer bg-white rounded-md font-medium text-violet-600 hover:text-violet-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-violet-500"
+                            >
+                              <span>Upload image</span>
+                              <input
+                                id="file-upload"
+                                name="document"
+                                type="file"
+                                onChange={handleFileChange}
+                                accept="image/*"
+                                className="sr-only"
+                              />
+                            </label>
+                            <p className="pl-1">or drag and drop</p>
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            JPG, PNG, GIF, or WEBP up to 5MB
+                          </p>
+                        </>
+                      )}
                     </div>
                   </div>
+                  {fileError && (
+                    <p className="mt-2 text-sm text-red-600">{fileError}</p>
+                  )}
                 </div>
               </div>
 
