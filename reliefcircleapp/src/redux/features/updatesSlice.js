@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { showToast } from '@/components/Toast';
-import { FUNDRAISER_UPDATES_ENDPOINT, UPDATES_ENDPOINT } from '@/utils/api';
+import { FUNDRAISER_UPDATES_ENDPOINT, UPDATES_ENDPOINT, VOLUNTEER_UPDATES_ENDPOINT } from '@/utils/api';
 
 // Async thunk for fetching fundraiser updates with pagination
 export const fetchFundraiserUpdates = createAsyncThunk(
@@ -58,8 +58,31 @@ export const sendFundraiserUpdate = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching volunteer updates
+export const fetchVolunteerUpdates = createAsyncThunk(
+  'updates/fetchVolunteerUpdates',
+  async ({ token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        VOLUNTEER_UPDATES_ENDPOINT,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch volunteer updates';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   updates: [],
+  volunteerUpdates: [],
   currentPage: 0,
   totalPages: 0,
   totalElements: 0,
@@ -95,6 +118,32 @@ const updatesSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload;
         state.updates = [];
+      })
+      .addCase(sendFundraiserUpdate.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(sendFundraiserUpdate.fulfilled, (state) => {
+        state.status = 'succeeded';
+        state.error = null;
+      })
+      .addCase(sendFundraiserUpdate.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(fetchVolunteerUpdates.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(fetchVolunteerUpdates.fulfilled, (state, action) => {
+        state.status = 'succeeded';
+        state.volunteerUpdates = action.payload;
+        state.error = null;
+      })
+      .addCase(fetchVolunteerUpdates.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+        state.volunteerUpdates = [];
       });
   }
 });
