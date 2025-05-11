@@ -90,17 +90,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/updates/fundraiser/me").hasAuthority("ROLE_FUNDRAISER") // API 23
                         // Donor endpoints
                         .requestMatchers(HttpMethod.DELETE, "/api/updates/ratings/{ratingId}").hasAuthority("ROLE_DONOR")
-                        // Volunteer endpoints
                         .requestMatchers(HttpMethod.POST, "/api/donations/*/verify").hasAuthority("ROLE_DONOR") // Fix for API 18
-                        .requestMatchers("/api/updates/volunteer/me/ratings").access(new WebExpressionAuthorizationManager("hasAuthority('ROLE_DONOR') and authentication.principal.isVolunteer == true"))
+                        .requestMatchers("/api/updates/volunteer/me/ratings").hasAuthority("ROLE_DONOR")
+                        .requestMatchers(HttpMethod.PUT,"/api/users/me/volunteer").hasAuthority("ROLE_DONOR")
                         // Proof endpoints
                         .requestMatchers(HttpMethod.POST, "/api/proofs/charity/{charityId}/upload").hasAuthority("ROLE_FUNDRAISER") // Fix for API 19
-                        // User image endpoints with ownership check
-                        .requestMatchers(HttpMethod.POST, "/api/users/{userId}/image/**")
-                            .access(new WebExpressionAuthorizationManager("hasAnyRole('FUNDRAISER', 'VOLUNTEER', 'DONOR') and #userId == authentication.principal.id")) // API 7
-                        .requestMatchers(HttpMethod.GET, "/api/users/{userId}/image/**")
-                            .access(new WebExpressionAuthorizationManager("hasAnyRole('FUNDRAISER', 'VOLUNTEER', 'DONOR') and #userId == authentication.principal.id")) // API 8
-                        // Default
+                         // Default
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().authenticated()
             )

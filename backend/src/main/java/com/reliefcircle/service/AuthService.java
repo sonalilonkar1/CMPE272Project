@@ -33,16 +33,13 @@ public class AuthService {
     private final Set<String> tokenBlacklist = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public AuthResponse register(RegisterRequest request) {
-        System.out.println("Registering user with role: " + request.getRole());
         var user = User.builder()
                 .email(request.getEmail())
                 .passwordHash(passwordEncoder.encode(request.getPassword()))
                 .fullName(request.getFullName())
                 .role(User.UserRole.valueOf(request.getRole()))
                 .build();
-        System.out.println("Built user with role: " + user.getRole());
         user = userRepository.save(user);
-        System.out.println("Saved user with role: " + user.getRole());
         var jwtToken = jwtService.generateToken(user);
         return AuthResponse.builder()
                 .token(jwtToken)

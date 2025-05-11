@@ -27,6 +27,7 @@ public class CharityDto {
     private UUID fundraiserId;
     private String fundraiserName;
     private String fundraiserEmail;
+    private String fundraiserStripeId;
     private MultipartFile file;
     private String fileUrl;
 }

@@ -141,6 +141,20 @@ public class UserController {
         }
     }
 
+    @PutMapping("/me/volunteer")
+    public ResponseEntity<UserDto> signUpAsVolunteer( Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+        
+        if (!user.getRole().equals(User.UserRole.DONOR)) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(null);
+        }
+
+        UserDto updatedUser = UserDto.fromUser(UserService.updateVolunteerStatus(user.getId(), true));
+        return ResponseEntity.ok(updatedUser);
+    }
+
     /**
      * Get list of donors who are volunteers
      * @param paginationRequest Pagination parameters
