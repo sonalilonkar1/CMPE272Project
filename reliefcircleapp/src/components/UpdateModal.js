@@ -1,9 +1,12 @@
 'use client'
 
 import { useState } from 'react'
-import Image from 'next/image'
+import { useDispatch, useSelector } from 'react-redux'
+import { sendFundraiserUpdate } from '@/redux/features/updatesSlice'
 
 export default function UpdateModal({ isOpen, onClose, charityId, charityName }) {
+  const dispatch = useDispatch()
+  const { profile } = useSelector((state) => state.user)
   const [message, setMessage] = useState('')
   const [media, setMedia] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
@@ -13,28 +16,18 @@ export default function UpdateModal({ isOpen, onClose, charityId, charityName })
     setIsLoading(true)
 
     try {
-      const formData = new FormData()
-      formData.append('message', message)
-      if (media) {
-        formData.append('media', media)
-      }
-      formData.append('charityId', charityId)
-
-      const response = await fetch('/api/charity-updates', {
-        method: 'POST',
-        body: formData,
-      })
-
-      if (!response.ok) {
-        throw new Error('Failed to send update')
-      }
+      await dispatch(sendFundraiserUpdate({
+        text: message,
+        file: media,
+        token: profile.token,
+        charityId
+      })).unwrap()
 
       setMessage('')
       setMedia(null)
       onClose()
     } catch (error) {
       console.error('Error sending update:', error)
-      // You might want to show an error toast here
     } finally {
       setIsLoading(false)
     }

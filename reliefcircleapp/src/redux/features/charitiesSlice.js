@@ -23,11 +23,7 @@ export const fetchCharityById = createAsyncThunk(
   'charities/fetchCharityById',
   async (charityId, { rejectWithValue }) => {
     try {
-      const response = await axios.get(CHARITY_ENDPOINTS.DETAIL(charityId), {
-        headers: {
-          'Authorization': 'Bearer eyJhbGciOiJIUzUxMiJ9.eyJyb2xlIjoiRE9OT1IiLCJzdWIiOiJ0ZXN0dXNlcjJAZXhhbXBsZS5jb20iLCJpYXQiOjE3NDU4NjM4MTEsImV4cCI6MTc0NTk1MDIxMX0.EhEe-STkhRAaE-H8QibTIIV_RDQ4FqSnMlvp2txv0Kc13t_7eNgsAMAKwG6i937vz1TjGzu1g5xUS-pjT8q-3g'
-        }
-      });
+      const response = await axios.get(CHARITY_ENDPOINTS.DETAIL(charityId));
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Failed to fetch charity details');
@@ -38,9 +34,29 @@ export const fetchCharityById = createAsyncThunk(
 // Async thunk for creating a new charity
 export const createCharity = createAsyncThunk(
   'charities/createCharity',
-  async (charityData, { rejectWithValue }) => {
+  async ({ charityData, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(CHARITY_ENDPOINTS.CREATE, charityData);
+      const formData = new FormData();
+      formData.append('name', charityData.name);
+      formData.append('description', charityData.description);
+      formData.append('organizationName', charityData.organizationName);
+      formData.append('targetAmount', charityData.targetAmount);
+      formData.append('category', charityData.category);
+      formData.append('location', charityData.location);
+      formData.append('website', charityData.website);
+      if (charityData.documents && charityData.documents[0]) {
+        formData.append('file', charityData.documents[0]);
+      }
+      const response = await axios.post(
+        CHARITY_ENDPOINTS.CREATE,
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+            ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+          }
+        }
+      );
       showToast.success('Charity created successfully!');
       return response.data;
     } catch (error) {

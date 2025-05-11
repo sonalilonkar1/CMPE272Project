@@ -3,11 +3,13 @@ import { useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { useRouter } from 'next/navigation'
 import { createCharity } from '@/redux/features/charitiesSlice'
+import { CHARITY_CATEGORIES } from '@/utils/constants'
 
 export default function NewCharityForm() {
   const dispatch = useDispatch()
   const router = useRouter()
   const { status, error } = useSelector((state) => state.charities)
+  const { profile } = useSelector((state) => state.user)
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -15,24 +17,17 @@ export default function NewCharityForm() {
     targetAmount: '',
     category: '',
     location: '',
-    startDate: '',
-    endDate: '',
-    documents: [],
-    contactName: '',
-    contactEmail: '',
-    contactPhone: '',
     website: '',
-    socialMedia: {
-      facebook: '',
-      twitter: '',
-      instagram: ''
-    }
+    documents: [],
   })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     try {
-      const result = await dispatch(createCharity(formData)).unwrap()
+      const result = await dispatch(createCharity({
+        charityData: formData,
+        token: profile?.token
+      })).unwrap()
       if (result) {
         router.push('/fundraiser')
       }
@@ -69,7 +64,7 @@ export default function NewCharityForm() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gray-50 mt-16">
       <div className="container py-8">
         <div className="max-w-3xl mx-auto">
           <div className="card">
@@ -128,23 +123,19 @@ export default function NewCharityForm() {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Category *
-                    </label>
+                    <label htmlFor="category" className="block text-sm font-medium text-gray-700 mb-1">Category</label>
                     <select
+                      id="category"
                       name="category"
                       value={formData.category}
                       onChange={handleChange}
                       required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500 h-12"
                     >
-                      <option value="">Select category</option>
-                      <option value="education">Education</option>
-                      <option value="health">Health</option>
-                      <option value="environment">Environment</option>
-                      <option value="poverty">Poverty Alleviation</option>
-                      <option value="humanitarian">Humanitarian Aid</option>
-                      <option value="other">Other</option>
+                      <option value="">Select a category</option>
+                      {CHARITY_CATEGORIES.map((cat) => (
+                        <option key={cat.id} value={cat.id}>{cat.label}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
@@ -165,164 +156,15 @@ export default function NewCharityForm() {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Website
-                    </label>
-                    <input
-                      type="url"
-                      name="website"
-                      value={formData.website}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="https://example.com"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Campaign Timeline */}
-              <div className="space-y-4">
-                <h2 className="!text-lg !mb-4">Campaign Timeline</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Start Date *
-                    </label>
-                    <input
-                      type="date"
-                      name="startDate"
-                      value={formData.startDate}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      End Date *
-                    </label>
-                    <input
-                      type="date"
-                      name="endDate"
-                      value={formData.endDate}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="space-y-4">
-                <h2 className="!text-lg !mb-4">Contact Information</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Contact Name *
-                    </label>
-                    <input
-                      type="text"
-                      name="contactName"
-                      value={formData.contactName}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter contact name"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Contact Email *
-                    </label>
-                    <input
-                      type="email"
-                      name="contactEmail"
-                      value={formData.contactEmail}
-                      onChange={handleChange}
-                      required
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Enter contact email"
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Contact Phone
-                  </label>
-                  <input
-                    type="tel"
-                    name="contactPhone"
-                    value={formData.contactPhone}
-                    onChange={handleChange}
-                    className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                    placeholder="Enter contact phone"
-                  />
-                </div>
-              </div>
-
-              {/* Social Media */}
-              <div className="space-y-4">
-                <h2 className="!text-lg !mb-4">Social Media</h2>
-                
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Facebook
-                    </label>
-                    <input
-                      type="url"
-                      name="socialMedia.facebook"
-                      value={formData.socialMedia.facebook}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Facebook URL"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Twitter
-                    </label>
-                    <input
-                      type="url"
-                      name="socialMedia.twitter"
-                      value={formData.socialMedia.twitter}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Twitter URL"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">
-                      Instagram
-                    </label>
-                    <input
-                      type="url"
-                      name="socialMedia.instagram"
-                      value={formData.socialMedia.instagram}
-                      onChange={handleChange}
-                      className="w-full px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500"
-                      placeholder="Instagram URL"
-                    />
-                  </div>
                 </div>
               </div>
 
               {/* Documents */}
               <div className="space-y-4">
-                <h2 className="!text-lg !mb-4">Required Documents</h2>
-                
+                <h2 className="!text-lg !mb-4">Required Document</h2>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-1">
-                    Upload Documents *
+                    Upload Document *
                   </label>
                   <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-xl">
                     <div className="space-y-1 text-center">
@@ -345,15 +187,13 @@ export default function NewCharityForm() {
                           htmlFor="file-upload"
                           className="relative cursor-pointer bg-white rounded-md font-medium text-violet-600 hover:text-violet-500 focus-within:outline-none focus-within:ring-2 focus-within:ring-offset-2 focus-within:ring-violet-500"
                         >
-                          <span>Upload files</span>
+                          <span>Upload file</span>
                           <input
                             id="file-upload"
-                            name="documents"
+                            name="document"
                             type="file"
-                            multiple
                             onChange={handleFileChange}
                             className="sr-only"
-                            required
                           />
                         </label>
                         <p className="pl-1">or drag and drop</p>

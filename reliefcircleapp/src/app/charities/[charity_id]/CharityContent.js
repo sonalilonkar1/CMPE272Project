@@ -1,9 +1,10 @@
 'use client'
 import { useState } from 'react'
+import DonationModal from '@/components/DonationModal'
 
 // Skeleton loader component
 export const CharityDetailSkeleton = () => (
-  <main className="min-h-screen bg-gray-50">
+  <main className="min-h-screen bg-gray-50 mt-28">
     {/* Header Section Skeleton */}
     <section className="gradient-bg">
       <div className="container py-12">
@@ -95,6 +96,8 @@ export const CharityDetailSkeleton = () => (
 export default function CharityContent({ initialData }) {
   const [donationAmount, setDonationAmount] = useState(50)
   const [isProcessing, setIsProcessing] = useState(false)
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false)
+  const [selectedCharity, setSelectedCharity] = useState(null)
 
   const handleDonation = async (e) => {
     e.preventDefault()
@@ -113,10 +116,20 @@ export default function CharityContent({ initialData }) {
 
   const progressPercentage = (initialData.raisedAmount / initialData.targetAmount) * 100
 
+  const handleOpenDonationModal = (charity) => {
+    setSelectedCharity(charity)
+    setIsDonationModalOpen(true)
+  }
+
+  const handleCloseDonationModal = () => {
+    setIsDonationModalOpen(false)
+    setSelectedCharity(null)
+  }
+
   return (
     <main className="min-h-screen bg-gray-50">
       {/* Header Section */}
-      <section className="gradient-bg">
+      <section className="gradient-bg mt-16">
         <div className="container py-12">
           <div className="flex items-center gap-4 mb-4">
             <h1 className="text-white !mb-0">{initialData.name}</h1>
@@ -208,11 +221,12 @@ export default function CharityContent({ initialData }) {
                     </div>
 
                     <button
-                      type="submit"
+                      type="button"
                       className="w-full btn-primary bg-gradient-to-r from-violet-600 to-teal-500"
+                      onClick={() => handleOpenDonationModal(initialData)}
                       disabled={isProcessing}
                     >
-                      {isProcessing ? 'Processing...' : 'Donate Now'}
+                      Donate Now
                     </button>
                   </form>
 
@@ -227,6 +241,15 @@ export default function CharityContent({ initialData }) {
           </div>
         </div>
       </section>
+
+      {/* Donation Modal */}
+      {isDonationModalOpen && (
+        <DonationModal
+          isOpen={isDonationModalOpen}
+          onClose={handleCloseDonationModal}
+          charity={selectedCharity}
+        />
+      )}
     </main>
   )
 } 

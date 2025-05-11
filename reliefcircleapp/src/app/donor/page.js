@@ -5,6 +5,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fetchDonorDonations } from '@/redux/features/donationsSlice'
+import DonationModal from '@/components/DonationModal'
+import { showToast } from '@/components/Toast'
 
 export default function DonorDashboard() {
   const dispatch = useDispatch()
@@ -12,6 +14,14 @@ export default function DonorDashboard() {
   const currentTab = searchParams.get('tab') || 'overview'
   const { donations, status, error } = useSelector((state) => state.donations)
   const { profile } = useSelector((state) => state.user)
+  const [selectedCharity, setSelectedCharity] = useState(null)
+  const [isDonationModalOpen, setIsDonationModalOpen] = useState(false)
+  const [isVolunteer, setIsVolunteer] = useState(profile?.isVolunteer)
+  const [selectedUpdate, setSelectedUpdate] = useState(null)
+  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
+  const [rating, setRating] = useState(0)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const paymentStatus = searchParams.get('payment')
 
   const tabs = [
     { id: 'overview', label: 'Profile', href: '/donor?tab=overview' },
@@ -59,14 +69,6 @@ export default function DonorDashboard() {
     }
   ]
 
-  const [isVolunteer, setIsVolunteer] = useState(profile?.isVolunteer)
-  const [selectedUpdate, setSelectedUpdate] = useState(null)
-  const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false)
-  const [rating, setRating] = useState(0)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-
-
-
   const donor = profile || {
     name: 'John Doe',
     email: 'john@example.com',
@@ -86,6 +88,14 @@ export default function DonorDashboard() {
       dispatch(fetchDonorDonations({donorId: profile?.id, token: profile?.token}))
     }
   }, [dispatch, currentTab, profile])
+
+  useEffect(() => {
+    if (paymentStatus === 'success') {
+      showToast.success('Thank you for your donation!')
+    } else if (paymentStatus === 'cancelled') {
+      showToast.info('Donation was cancelled')
+    }
+  }, [paymentStatus])
 
   // Calculate impact stats
   const totalDonations = donations.length > 0 
@@ -211,6 +221,36 @@ export default function DonorDashboard() {
       </div>
     )
   }
+
+  const handleOpenDonationModal = (charity) => {
+    setSelectedCharity(charity)
+    setIsDonationModalOpen(true)
+  }
+
+  const handleCloseDonationModal = () => {
+    setSelectedCharity(null)
+    setIsDonationModalOpen(false)
+  }
+
+  // Mock charities data - replace with actual data from your API
+  const mockCharities = [
+    {
+      id: '1',
+      name: 'Global Food Bank',
+      description: 'Providing food security to communities in need',
+      targetAmount: 50000,
+      raisedAmount: 25000,
+      image: '/images/charity1.jpg'
+    },
+    {
+      id: '2',
+      name: 'Education for All',
+      description: 'Making quality education accessible to all children',
+      targetAmount: 75000,
+      raisedAmount: 45000,
+      image: '/images/charity2.jpg'
+    }
+  ]
 
   return (
     <div className="min-h-screen bg-gray-50 py-8">
@@ -505,6 +545,13 @@ export default function DonorDashboard() {
           </div>
         </div>
       )}
+
+      {/* Donation Modal */}
+      <DonationModal
+        isOpen={isDonationModalOpen}
+        onClose={handleCloseDonationModal}
+        charity={selectedCharity}
+      />
     </div>
   )
 } 
