@@ -28,6 +28,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Sort;
 
 @Slf4j
 @Validated
@@ -256,7 +257,7 @@ public class UpdateController {
     /**
      * Rate an update
      * @param updateId The update ID
-     * @param rating The rating value (1-5)
+     * @param rating The rating value (1-10)
      * @param comment Optional comment to accompany the rating
      * @param authentication The authentication object
      * @return The created rating
@@ -290,7 +291,7 @@ public class UpdateController {
         }
 
         // Validate rating value
-        if (rating < 1 || rating > 5) {
+        if (rating < 1 || rating > 10) {
             return ResponseEntity.badRequest().body(null);
         }
 
@@ -377,6 +378,45 @@ public class UpdateController {
         // Delete the rating
         updateService.deleteRating(ratingId, user.getId());
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Get updates for a specific charity
+     * @param charityId The charity ID
+     * @param paginationRequest Pagination parameters
+     * @return Paginated list of updates for the charity
+     */
+    @GetMapping("/charity/{charityId}")
+    public ResponseEntity<PaginatedResponse<UpdateDto>> getUpdatesForCharity(
+            @PathVariable("charityId") @Positive Long charityId,
+            @Valid PaginationRequest paginationRequest
+    ) {
+        log.info("Fetching updates for charity ID: {}", charityId);
+
+        Sort sort = Sort.by(
+            paginationRequest.getSortDirection(), 
+            paginationRequest.getSortBy()
+        );
+
+        Page<UpdateDto> page = updateService.getUpdatesByCharity(
+                charityId,
+                PageRequest.of(
+                    paginationRequest.getPageNumber(),
+                    paginationRequest.getPageSize(),
+                    sort
+                )
+        );
+
+        PaginatedResponse<UpdateDto> response = PaginatedResponse.<UpdateDto>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
+                .build();
+
+        return ResponseEntity.ok(response);
     }
 
     private void notifyRandomVolunteers(Long charityId, UpdateDto createdUpdate) {

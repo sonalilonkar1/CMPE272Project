@@ -9,11 +9,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "updates")
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
 @ToString(exclude = {"charity", "ratings"})
 public class Update {
     @Id
@@ -52,6 +51,10 @@ public class Update {
     @Column(name = "rating_count")
     @Builder.Default
     private Integer ratingCount = 0;
+
+    @Column(name = "is_approved")
+    @Builder.Default
+    private Boolean isApproved = false;
 
     @PrePersist
     protected void onCreate() {

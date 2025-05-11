@@ -11,6 +11,7 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
@@ -79,6 +80,20 @@ public class AWSService {
             throw new RuntimeException("Failed to upload file to S3", e);
         }
     }
+
+    public byte[] downloadFile(String key) {
+        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
+                .bucket(primaryBucket)
+                .key(key)
+                .build();
+
+        try (InputStream inputStream = s3Client.getObject(getObjectRequest)) {
+            return inputStream.readAllBytes();
+        } catch (IOException e) {
+            throw new RuntimeException("Failed to read file from S3", e);
+        }
+    }
+
 
     public boolean pubMessageToFundraiser(CharityDto charityDto) {
         try {
