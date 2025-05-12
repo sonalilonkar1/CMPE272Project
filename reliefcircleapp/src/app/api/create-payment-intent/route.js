@@ -36,7 +36,7 @@ export async function POST(request) {
     console.log("session",session)
     return NextResponse.json({ url: session.url, sessionId: session.id });
   } catch (error) {
-    console.error('Stripe error:', error);
+    // console.error('Stripe error:', error);
     return NextResponse.json(
       { message: error.message || 'Failed to create payment' },
       { status: 500 }

@@ -28,8 +28,7 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
           amount: parseFloat(amount) * 100, // Convert to cents
           charityId: charity.id,
           charityName: charity.name,
-          // TODO: Replace with dynamic Stripe account from charity detail API
-          stripeAccount: 'acct_1RNMOzRgqpLqbT8e',
+          stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId :'acct_1RO0YyReABzSigiM',
         }),
       })
 
@@ -38,19 +37,7 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to create payment')
       }
-
-      // Load Stripe
-      const { loadStripe } = await import('@stripe/stripe-js')
-      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-
-      // Redirect to Stripe Checkout
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId,
-      })
-
-      if (error) {
-        throw new Error(error.message)
-      }
+      window.location = data.url
     } catch (error) {
       console.error('Payment error:', error)
       showToast.error(error.message || 'Failed to process payment')
