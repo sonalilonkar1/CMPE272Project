@@ -235,6 +235,14 @@ public class CharityService {
 
         Donation savedDonation = donationRepository.save(donation);
 
+        // Update the related charity
+        if (charity != null) {
+            // Update the raisedAmount
+            BigDecimal newRaisedAmount = charity.getRaisedAmount().add(BigDecimal.valueOf(savedDonation.getAmount()));
+            charity.setRaisedAmount(newRaisedAmount);
+            charityRepository.save(charity);
+        }
+
         return DonationDto.builder()
                 .id(savedDonation.getId())
                 .stripeOrderId(savedDonation.getStripeOrderId())
