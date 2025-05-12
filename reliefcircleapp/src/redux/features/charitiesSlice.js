@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { showToast } from '@/components/Toast';
-import { CHARITY_ENDPOINTS } from '@/utils/api';
+import { CHARITY_ENDPOINTS, CHARITY_UPDATES_ENDPOINT } from '@/utils/api';
 
 // Async thunk for fetching charities
 export const fetchCharities = createAsyncThunk(
@@ -84,6 +84,23 @@ export const fetchFundraiserCharities = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching updates for a specific charity
+export const fetchCharityUpdates = createAsyncThunk(
+  'charities/fetchCharityUpdates',
+  async ({ charityId, token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        CHARITY_UPDATES_ENDPOINT(charityId)
+      );
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch charity updates';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   charities: [],
   currentCharity: null,
@@ -97,7 +114,10 @@ const initialState = {
   fundraiserCharitiesPage: 0,
   fundraiserCharitiesTotalPages: 0,
   fundraiserCharitiesTotalElements: 0,
-  fundraiserCharitiesPageSize: 10
+  fundraiserCharitiesPageSize: 10,
+  charityUpdates: [],
+  charityUpdatesLoading: false,
+  charityUpdatesError: null
 };
 
 const charitiesSlice = createSlice({
@@ -174,6 +194,19 @@ const charitiesSlice = createSlice({
         state.status = 'failed';
         state.error = action.payload;
         state.fundraiserCharities = [];
+      })
+      // Fetch Charity Updates
+      .addCase(fetchCharityUpdates.pending, (state) => {
+        state.charityUpdatesLoading = true;
+        state.charityUpdatesError = null;
+      })
+      .addCase(fetchCharityUpdates.fulfilled, (state, action) => {
+        state.charityUpdatesLoading = false;
+        state.charityUpdates = action.payload;
+      })
+      .addCase(fetchCharityUpdates.rejected, (state, action) => {
+        state.charityUpdatesLoading = false;
+        state.charityUpdatesError = action.payload;
       });
   }
 });
