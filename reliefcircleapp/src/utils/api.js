@@ -37,6 +37,7 @@ export const USER_ENDPOINTS = {
   CHANGE_PASSWORD: `${API_URL}/users/change-password`,
   UPLOAD_AVATAR: `${API_URL}/users/avatar`,
   SIGNUP_VOLUNTEER: `${API_URL}/users/me/volunteer`,
+  STATS_DONOR: `${API_URL}/stats/donor`,
 };
 
 export const FUNDRAISER_UPDATES_ENDPOINT = `${API_URL}/updates/fundraiser/me`;

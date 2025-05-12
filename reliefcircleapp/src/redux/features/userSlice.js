@@ -63,6 +63,25 @@ export const signupAsVolunteer = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching donor dashboard stats
+export const fetchDonorStats = createAsyncThunk(
+  'user/fetchDonorStats',
+  async ({ token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(USER_ENDPOINTS.STATS_DONOR, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch donor stats';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   profile: null,
   loading: false,
@@ -71,7 +90,10 @@ const initialState = {
   stripeAccountLoading: false,
   stripeAccountError: null,
   volunteerStatus: 'idle',
-  volunteerError: null
+  volunteerError: null,
+  donorStats: null,
+  donorStatsLoading: false,
+  donorStatsError: null
 };
 
 const userSlice = createSlice({
@@ -125,6 +147,18 @@ const userSlice = createSlice({
       .addCase(signupAsVolunteer.rejected, (state, action) => {
         state.volunteerStatus = 'failed';
         state.volunteerError = action.payload;
+      })
+      .addCase(fetchDonorStats.pending, (state) => {
+        state.donorStatsLoading = true;
+        state.donorStatsError = null;
+      })
+      .addCase(fetchDonorStats.fulfilled, (state, action) => {
+        state.donorStatsLoading = false;
+        state.donorStats = action.payload;
+      })
+      .addCase(fetchDonorStats.rejected, (state, action) => {
+        state.donorStatsLoading = false;
+        state.donorStatsError = action.payload;
       });
   }
 });

@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fetchDonorDonations } from '@/redux/features/donationsSlice'
 import { fetchVolunteerUpdates, rateUpdate } from '@/redux/features/updatesSlice'
-import { signupAsVolunteer } from '@/redux/features/userSlice'
+import { signupAsVolunteer, fetchDonorStats } from '@/redux/features/userSlice'
 import DonationModal from '@/components/DonationModal'
 import { showToast } from '@/components/Toast'
 
@@ -15,7 +15,7 @@ export default function DonorDashboard() {
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab') || 'overview'
   const { donations, status, error } = useSelector((state) => state.donations)
-  const { profile, volunteerStatus } = useSelector((state) => state.user)
+  const { profile, volunteerStatus, donorStats } = useSelector((state) => state.user)
   const { volunteerUpdates, status: updatesStatus, error: updatesError } = useSelector((state) => state.updates)
   const [selectedCharity, setSelectedCharity] = useState(null)
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false)
@@ -111,6 +111,12 @@ export default function DonorDashboard() {
       setIsVolunteer(true)
     }
   }, [profile?.isVolunteer])
+
+  useEffect(() => {
+    if (profile?.token) {
+      dispatch(fetchDonorStats({ token: profile.token }))
+    }
+  }, [dispatch, profile?.token])
 
   // Calculate impact stats
   const totalDonations = donations.length > 0 
@@ -369,21 +375,14 @@ export default function DonorDashboard() {
           ) : currentTab === 'impact' ? (
             <div className="space-y-6">
               {/* Impact Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="bg-violet-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-violet-900">Total Donations</h3>
-                  <p className="mt-2 text-3xl font-bold text-violet-600">${totalDonations?.toLocaleString()}</p>
-                  <p className="text-sm text-violet-600">{donations.length || donor.totalDonations} donations made</p>
-                </div>
-                <div className="bg-green-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-green-900">People Helped</h3>
-                  <p className="mt-2 text-3xl font-bold text-green-600">{peopleHelped}</p>
-                  <p className="text-sm text-green-600">Lives impacted</p>
+                  <h3 className="text-lg font-medium text-violet-900">Total Donated</h3>
+                  <p className="mt-2 text-3xl font-bold text-violet-600">${donorStats.totalDonated?.toLocaleString()}</p>
                 </div>
                 <div className="bg-blue-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-blue-900">Projects Supported</h3>
-                  <p className="mt-2 text-3xl font-bold text-blue-600">{projectsSupported}</p>
-                  <p className="text-sm text-blue-600">{charitiesSupported} charities</p>
+                  <h3 className="text-lg font-medium text-blue-900">Charities Supported</h3>
+                  <p className="mt-2 text-3xl font-bold text-blue-600">{donorStats.totalCharitiesSupported}</p>
                 </div>
               </div>
 
