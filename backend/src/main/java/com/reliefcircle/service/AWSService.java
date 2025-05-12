@@ -88,12 +88,11 @@ public class AWSService {
     /**
      * Sends a notification to the specified recipient using SNS.
      *
-     * @param recipient The recipient's email address.
      * @param subject   The subject of the notification.
      * @param message   The message body of the notification.
      * @param snsTopic  The SNS topic ARN to publish the message to.
      */
-    public void sendNotification(String recipient, String subject, String message, String topic) {
+    public void sendNotification(String subject, String message, String topic) {
         String snsTopic;
         if(topic.equals("charity")) {
             snsTopic = snsTopicCharity;
@@ -109,8 +108,7 @@ public class AWSService {
                     .message(message)
                     .build();
             PublishResponse result = snsClient.publish(request);
-            log.info("SNS Message sent. Message ID: {}", result.messageId());
-            log.info("Sending notification to {}: {}", recipient, message);
+            log.info("SNS Email sent for {}. Message ID: {}", topic ,result.messageId());
         } catch (Exception e) { 
             log.error("SNS Publish failed: {}", e.getMessage(), e);
         }

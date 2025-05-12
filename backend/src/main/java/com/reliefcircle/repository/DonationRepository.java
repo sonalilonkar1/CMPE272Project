@@ -18,7 +18,7 @@ import com.reliefcircle.model.Donation;
 public interface DonationRepository extends JpaRepository<Donation, Long> {
     List<Donation> findByDonorId(UUID donorId);
     Page<Donation> findByDonorId(UUID donorId, Pageable pageable);
-    Donation findByPaypalOrderId(String paypalOrderId);
+    Donation findByStripeOrderId(String stripeOrderId);
 
     @Query("SELECT COUNT(DISTINCT d.donor.id) FROM Donation d " +
            "JOIN d.charity c WHERE c.fundraiser.id = :fundraiserId")

@@ -201,7 +201,7 @@ public class DataInitializer {
                     .charity(charities.get(0))
                     .amount(new BigDecimal("100.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-123456789")
+                    .stripeOrderId("PAY-123456789")
                     .createdAt(LocalDateTime.now().minusDays(7))
                     .build(),
                 Donation.builder()
@@ -209,7 +209,7 @@ public class DataInitializer {
                     .charity(charities.get(1))
                     .amount(new BigDecimal("50.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-987654321")
+                    .stripeOrderId("PAY-987654321")
                     .createdAt(LocalDateTime.now().minusDays(3))
                     .build(),
                 // Donations from other donors
@@ -218,7 +218,7 @@ public class DataInitializer {
                     .charity(charities.get(2))
                     .amount(new BigDecimal("200.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-111111111")
+                    .stripeOrderId("PAY-111111111")
                     .createdAt(LocalDateTime.now().minusDays(5))
                     .build(),
                 Donation.builder()
@@ -226,7 +226,7 @@ public class DataInitializer {
                     .charity(charities.get(3))
                     .amount(new BigDecimal("150.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-222222222")
+                    .stripeOrderId("PAY-222222222")
                     .createdAt(LocalDateTime.now().minusDays(4))
                     .build(),
                 Donation.builder()
@@ -234,7 +234,7 @@ public class DataInitializer {
                     .charity(charities.get(4))
                     .amount(new BigDecimal("75.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-333333333")
+                    .stripeOrderId("PAY-333333333")
                     .createdAt(LocalDateTime.now().minusDays(2))
                     .build(),
                 Donation.builder()
@@ -242,7 +242,7 @@ public class DataInitializer {
                     .charity(charities.get(0))
                     .amount(new BigDecimal("300.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-444444444")
+                    .stripeOrderId("PAY-444444444")
                     .createdAt(LocalDateTime.now().minusDays(1))
                     .build(),
                 Donation.builder()
@@ -250,7 +250,7 @@ public class DataInitializer {
                     .charity(charities.get(1))
                     .amount(new BigDecimal("125.00").doubleValue())
                     .status(Donation.DonationStatus.COMPLETED)
-                    .paypalOrderId("PAY-555555555")
+                    .stripeOrderId("PAY-555555555")
                     .createdAt(LocalDateTime.now().minusDays(6))
                     .build()
             );
