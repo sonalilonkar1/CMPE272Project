@@ -304,7 +304,7 @@ public class UpdateService {
     }
     
     // Convert entities to DTOs
-    private UpdateDto convertToDto(Update update) {
+    public UpdateDto convertToDto(Update update) {
         List<UpdateRatingDto> ratingDtos = update.getRatings().stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
