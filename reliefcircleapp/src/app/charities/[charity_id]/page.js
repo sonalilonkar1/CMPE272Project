@@ -17,7 +17,15 @@ export default function CharityPage({ params }) {
   }
 
   if (status === 'failed') {
-    return <div className="text-red-600 p-8">Error: {error || 'Failed to fetch charity data.'}</div>;
+    let errorMessage = 'Failed to fetch charity data.';
+    if (error) {
+      if (typeof error === 'object' && error !== null) {
+        errorMessage = error.message || JSON.stringify(error);
+      } else {
+        errorMessage = error;
+      }
+    }
+    return <div className="text-red-600 p-8">Error: {errorMessage}</div>;
   }
 
   if (!currentCharity) {

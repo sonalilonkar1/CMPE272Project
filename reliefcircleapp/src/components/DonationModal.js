@@ -1,11 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { showToast } from './Toast'
 
-export default function DonationModal({ isOpen, onClose, charity }) {
-  const [amount, setAmount] = useState('')
+export default function DonationModal({ isOpen, onClose, charity, initialAmount }) {
+  const [amount, setAmount] = useState(initialAmount || '')
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (isOpen) {
+      setAmount(initialAmount || '')
+    }
+  }, [isOpen, initialAmount])
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -22,6 +28,8 @@ export default function DonationModal({ isOpen, onClose, charity }) {
           amount: parseFloat(amount) * 100, // Convert to cents
           charityId: charity.id,
           charityName: charity.name,
+          // TODO: Replace with dynamic Stripe account from charity detail API
+          stripeAccount: 'acct_1RNMOzRgqpLqbT8e',
         }),
       })
 
@@ -84,18 +92,9 @@ export default function DonationModal({ isOpen, onClose, charity }) {
               <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                 <span className="text-gray-500 sm:text-sm">$</span>
               </div>
-              <input
-                type="number"
-                name="amount"
-                id="amount"
-                min="1"
-                step="0.01"
-                required
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md focus:ring-violet-500 focus:border-violet-500"
-                placeholder="0.00"
-              />
+              <div className="block w-full pl-7 pr-12 sm:text-sm border-gray-300 rounded-md bg-gray-100 h-10 flex items-center">
+                <span className="text-gray-900">{amount}</span>
+              </div>
             </div>
           </div>
 

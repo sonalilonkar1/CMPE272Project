@@ -1,11 +1,13 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2022-11-15',
+});
 
 export async function POST(request) {
   try {
-    const { amount, charityId, charityName } = await request.json();
+    const { amount, charityId, charityName, stripeAccount } = await request.json();
 
     // Create a Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -30,7 +32,7 @@ export async function POST(request) {
         charityId,
         charityName,
       },
-    });
+    }, stripeAccount ? { stripeAccount } : undefined);
 
     return NextResponse.json({ sessionId: session.id });
   } catch (error) {
