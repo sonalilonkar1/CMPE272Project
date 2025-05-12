@@ -37,7 +37,6 @@ public class UpdateService {
     private final UserRepository userRepository;
     private final CharityRepository charityRepository;
     private final AWSService awsService;
-    private final NotificationService notificationService;
 
 
     /**
@@ -398,10 +397,11 @@ public class UpdateService {
         );
 
         // Use the NotificationService to send the notification
-        notificationService.sendNotification(
+        awsService.sendNotification(
             volunteer.getEmail(),
-            String.format("New Update for Charity: %s - First Review Request", update.getCharityName()),
-            messageBuilder.toString()
+            String.format("New Update for Charity: %s", update.getCharityName()),
+            messageBuilder.toString(),
+            "updates"
         );
         
         log.info("Sent first update notification to volunteer {} for charity {}", 
