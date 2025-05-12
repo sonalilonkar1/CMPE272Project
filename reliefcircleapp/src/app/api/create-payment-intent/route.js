@@ -33,8 +33,8 @@ export async function POST(request) {
         charityName,
       },
     }, stripeAccount ? { stripeAccount } : undefined);
-
-    return NextResponse.json({ sessionId: session.id });
+    console.log("session",session)
+    return NextResponse.json({ url: session.url, sessionId: session.id });
   } catch (error) {
     console.error('Stripe error:', error);
     return NextResponse.json(
