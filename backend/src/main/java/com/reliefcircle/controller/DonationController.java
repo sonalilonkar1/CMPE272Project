@@ -5,7 +5,6 @@ import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.model.User;
 import com.reliefcircle.dto.VerificationDto;
-import org.springframework.security.core.userdetails.UserDetails;
 import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -79,11 +78,9 @@ public class DonationController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DonationDto> addDonation(
-            @Valid @RequestBody DonationDto request,
-            Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-        User donor = UserRepository.findByEmail(userDetails.getUsername())
+            @Valid @RequestBody DonationDto request) {
+        
+        User donor = UserRepository.findById(request.getDonorId())
             .orElseThrow(() -> new IllegalStateException("User not found"));
             
         request.setDonorId(donor.getId());

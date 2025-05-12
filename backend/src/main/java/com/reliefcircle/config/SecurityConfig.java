@@ -73,12 +73,12 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/charities/{id}").permitAll()
                         .requestMatchers("/api/updates/charity/**").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/donations").permitAll() // Fix for API 17
                         .requestMatchers(HttpMethod.GET, "/api/proofs/charity/{charityId}").permitAll() // Fix for API 20
                         // Authenticated endpoints
                         .requestMatchers(HttpMethod.GET, "/api/charities/**").authenticated()
                         .requestMatchers("/api/users/me").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/donations").authenticated() // Fix for API 16
-                        .requestMatchers(HttpMethod.POST, "/api/donations").authenticated() // Fix for API 17
                         // Fundraiser endpoints
                         .requestMatchers(HttpMethod.POST, "/api/charities").hasAuthority("ROLE_FUNDRAISER")
                         .requestMatchers(HttpMethod.PUT, "/api/charities/*").hasAuthority("ROLE_FUNDRAISER")
