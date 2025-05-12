@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { showToast } from './Toast'
+import { FALLBACK_STRIPE_ACCOUNT } from '@/utils/constants'
 
 export default function DonationModal({ isOpen, onClose, charity, initialAmount }) {
   const [amount, setAmount] = useState(initialAmount || '')
@@ -28,7 +29,7 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
           amount: parseFloat(amount) * 100, // Convert to cents
           charityId: charity.id,
           charityName: charity.name,
-          stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId :'acct_1RO0YyReABzSigiM',
+          stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId : FALLBACK_STRIPE_ACCOUNT,
           donorId: profile?.id,
         }),
       })
@@ -39,6 +40,23 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
         throw new Error(data.message || 'Failed to create payment')
       }
       window.location = data.url
+      // Record the donation in your backend
+
+      const ourresponse = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/donations`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+          },
+        body: JSON.stringify({
+          stripeOrderId: data.sessionId,  
+          charityId: charity.id,
+          amount: parseFloat(amount) * 100,
+          donorId: profile?.id,
+        }),
+      });
+      const ourdata = await ourresponse.json();
+      console.log("webhook data" ,ourdata);
+    
     } catch (error) {
       console.error('Payment error:', error)
       showToast.error(error.message || 'Failed to process payment')

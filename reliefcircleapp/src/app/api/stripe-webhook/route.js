@@ -19,26 +19,8 @@ export async function POST(req) {
 
   if (event.type === 'checkout.session.completed') {
     const session = event.data.object;
-    // Record the donation in your backend
-    try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/donations`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-          },
-        body: JSON.stringify({
-          stripeOrderId: session.payment_intent,
-          charityId: session.metadata.charityId,
-          amount: session.amount_total / 100,
-          donorId: session.metadata.donorId,
-        }),
-      });
-      const data = await response.json();
-      console.log("webhook data" ,data);
-    } catch (err) {
-      console.error('Failed to record donation:', err);
-    }
-  }
+    
+  } 
 
   return NextResponse.json({ received: true });
 } 
