@@ -347,33 +347,11 @@ public class UpdateService {
      * @param update The update details
      */
     @Transactional
-    public void sendNotificationToVolunteer(User volunteer, UpdateDto update) {
-        // Check if volunteer has already received any update from this charity
-        if (updateRatingRepository.hasVolunteerRatedAnyUpdateForCharity(update.getCharityId(), volunteer.getId())) {
-            log.debug("Volunteer {} has already received an update from charity {}. Skipping notification.", 
-                volunteer.getEmail(), update.getCharityId());
-            return;
-        }
-
-        // Create initial rating with file URL
-        UpdateRating rating = UpdateRating.builder()
-                .update(updateRepository.getReferenceById(update.getId()))
-                .donor(volunteer)
-                .rating(0)
-                .comment(null)
-                .fileUrl(update.getFileUrl())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
-                
-        updateRatingRepository.save(rating);
-
+    public void sendNotificationToVolunteer(UpdateDto update) {
         // Build notification message
         StringBuilder messageBuilder = new StringBuilder();
         messageBuilder.append(String.format(
-            "Hello %s,\n\nA new update has been posted for your first review of this charity.\n\n",
-            volunteer.getFullName()
-        ));
+            "Hello,\n\nA new update has been posted for your first review of this charity.\n\n"));
         
         messageBuilder.append(String.format(
             "Charity: %s\n\n",
@@ -388,7 +366,7 @@ public class UpdateService {
         // Add file information if available
         if (update.getFileUrl() != null && !update.getFileUrl().isEmpty()) {
             messageBuilder.append("\nSupporting Documents:\n");
-            messageBuilder.append(String.format("File: %s\n", rating.getFileUrl()));
+            messageBuilder.append(String.format("File: %s\n", update.getFileUrl()));
         }
 
         messageBuilder.append(
@@ -398,14 +376,12 @@ public class UpdateService {
 
         // Use the NotificationService to send the notification
         awsService.sendNotification(
-            volunteer.getEmail(),
             String.format("New Update for Charity: %s", update.getCharityName()),
             messageBuilder.toString(),
             "updates"
         );
         
-        log.info("Sent first update notification to volunteer {} for charity {}", 
-            volunteer.getEmail(), update.getCharityName());
+        log.info("Sent first update notification to volunteers for charity {}", update.getCharityName());
     }
 
 

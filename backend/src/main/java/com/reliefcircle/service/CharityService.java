@@ -165,7 +165,6 @@ public class CharityService {
         messageBuilder.append("\n\nBest regards,\nReliefCircle Team");
 
         awsService.sendNotification(
-            charity.getFundraiserEmail(),
             "New Charity Registered: " + charity.getName(),
             messageBuilder.toString(),
             "charity"
@@ -226,7 +225,7 @@ public class CharityService {
                 .orElseThrow(() -> new CharityException("Charity not found"));
 
         Donation donation = Donation.builder()
-            .paypalOrderId(donationDto.getPaypalOrderId())
+            .stripeOrderId(donationDto.getStripeOrderId())
             .donor(donor)
             .charity(charity)
             .amount(donationDto.getAmount())
@@ -238,7 +237,7 @@ public class CharityService {
 
         return DonationDto.builder()
                 .id(savedDonation.getId())
-                .paypalOrderId(savedDonation.getPaypalOrderId())
+                .stripeOrderId(savedDonation.getStripeOrderId())
                 .donorId(savedDonation.getDonor().getId())
                 .donorName(savedDonation.getDonor().getFullName())
                 .donorEmail(savedDonation.getDonor().getEmail())

@@ -15,7 +15,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class DonationDto {
     private Long id;
-    private String paypalOrderId;
+    private String stripeOrderId;
     private UUID donorId;
     private String donorName;
     private String donorEmail;
@@ -30,7 +30,7 @@ public class DonationDto {
     public static DonationDto fromEntity(Donation donation) {
         DonationDto dto = new DonationDto();
         dto.setId(donation.getId());
-        dto.setPaypalOrderId(donation.getPaypalOrderId());
+        dto.setStripeOrderId(donation.getStripeOrderId());
         dto.setDonorId(donation.getDonor().getId());
         dto.setCharityId(donation.getCharity().getId());
         dto.setAmount(donation.getAmount());

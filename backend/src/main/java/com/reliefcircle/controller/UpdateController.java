@@ -481,32 +481,44 @@ public class UpdateController {
         return ResponseEntity.ok(response);
     }
 
+    /**
+     * Notify 10 random volunteers who have not donated to this charity
+     * @param charityId The charity ID
+     * @param createdUpdate The created update
+     */
     private void notifyRandomVolunteers(Long charityId, UpdateDto createdUpdate) {
-    log.info("Notifying 10 random volunteers for charity ID: {}", charityId);
+        log.info("Notifying volunteers about Updates for charity ID: {}", charityId);
 
-    // Fetch 10 random volunteers who have not donated to this charity
-    List<User> volunteers = userRepository.findRandomVolunteersNotDonatedToCharity(charityId, 10);
+        // Fetch 10 random volunteers who have not donated to this charity
+        List<User> volunteers = userRepository.findRandomVolunteersNotDonatedToCharity(charityId, 10);
 
-    // Send notifications to the selected volunteers
-    for (User volunteer : volunteers) {
-        log.info("Notifying volunteer: {}", volunteer.getEmail());
+        // Send notifications to the selected volunteers
+        for (User volunteer : volunteers) {
+            log.info("Notifying volunteer: {}", volunteer.getEmail());
 
-         // Add an entry to update_ratings for the volunteer
-        UpdateRating updateRating = UpdateRating.builder()
-                .update(updateRepository.findById(createdUpdate.getId())
-                        .orElseThrow(() -> new RuntimeException("Update not found with ID: " + createdUpdate.getId())))
-                .donor(volunteer)
-                .rating(0) // Default rating (e.g., null if not rated yet)
-                .comment(null) // No comment initially
-                .fileUrl(createdUpdate.getFileUrl())
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
-                .build();
+            // Check if volunteer has already received any update from this charity
+            if (updateRatingRepository.hasVolunteerRatedAnyUpdateForCharity(createdUpdate.getCharityId(), volunteer.getId())) {
+                log.debug("Volunteer {} has already received an update from charity {}. Skipping notification.", 
+                    volunteer.getEmail(), createdUpdate.getCharityId());
+                return;
+            }
+            // Add an entry to update_ratings for the volunteer
+            UpdateRating updateRating = UpdateRating.builder()
+                    .update(updateRepository.findById(createdUpdate.getId())
+                            .orElseThrow(() -> new RuntimeException("Update not found with ID: " + createdUpdate.getId())))
+                    .donor(volunteer)
+                    .rating(0) // Default rating (e.g., null if not rated yet)
+                    .comment(null) // No comment initially
+                    .fileUrl(createdUpdate.getFileUrl())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
 
-        updateRatingRepository.save(updateRating);
+            updateRatingRepository.save(updateRating);
 
-        // Implement your notification logic here (e.g., email, SMS, push notification)
-        updateService.sendNotificationToVolunteer(volunteer, createdUpdate);
+        }
+
+        // Send notification to the selected volunteers
+        updateService.sendNotificationToVolunteer(createdUpdate);
     }
-}
 }

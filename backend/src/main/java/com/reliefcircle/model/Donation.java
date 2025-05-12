@@ -43,8 +43,8 @@ public class Donation {
     @Column(name = "created_at", nullable = true)
     private LocalDateTime createdAt;
 
-    @Column(name = "paypal_order_id", nullable = true)
-    private String paypalOrderId;
+    @Column(name = "stripe_order_id", nullable = true)
+    private String stripeOrderId;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = true)
