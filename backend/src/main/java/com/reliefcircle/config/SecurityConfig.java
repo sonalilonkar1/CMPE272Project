@@ -72,6 +72,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/charities").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/charities/verified").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/charities/{id}").permitAll()
+                        .requestMatchers("/api/updates/charity/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/proofs/charity/{charityId}").permitAll() // Fix for API 20
                         // Authenticated endpoints
                         .requestMatchers(HttpMethod.GET, "/api/charities/**").authenticated()

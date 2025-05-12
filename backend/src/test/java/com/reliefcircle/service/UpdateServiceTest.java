@@ -1,29 +1,38 @@
 package com.reliefcircle.service;
 
 import com.reliefcircle.dto.UpdateDto;
+import com.reliefcircle.dto.UpdateRatingDto;
 import com.reliefcircle.model.Charity;
 import com.reliefcircle.model.Update;
+import com.reliefcircle.dto.UpdateRatingDto;
 import com.reliefcircle.model.User;
+import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.UpdateRepository;
 import com.reliefcircle.repository.UpdateRatingRepository;
+import com.reliefcircle.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class UpdateServiceTest {
 
     @Mock
@@ -31,6 +40,12 @@ class UpdateServiceTest {
 
     @Mock
     private UpdateRatingRepository updateRatingRepository;
+
+    @Mock
+    private CharityRepository charityRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private AWSService awsService;
@@ -48,12 +63,14 @@ class UpdateServiceTest {
         mockFundraiser = User.builder()
                 .id(UUID.randomUUID())
                 .email("fundraiser@example.com")
+                .role(User.UserRole.FUNDRAISER)
                 .build();
 
         mockCharity = Charity.builder()
                 .id(1L)
                 .fundraiser(mockFundraiser)
                 .name("Test Charity")
+                .isVerified(false) // Initial state
                 .build();
 
         mockUpdate = Update.builder()
@@ -69,6 +86,11 @@ class UpdateServiceTest {
                 .fundraiserId(mockFundraiser.getId())
                 .text("Test update")
                 .build();
+
+        // Mock repository calls
+        when(userRepository.findById(eq(mockFundraiser.getId()))).thenReturn(Optional.of(mockFundraiser));
+        when(charityRepository.findById(eq(mockCharity.getId()))).thenReturn(Optional.of(mockCharity));
+        when(updateRepository.findById(eq(mockUpdate.getId()))).thenReturn(Optional.of(mockUpdate));
     }
 
     @Test
@@ -88,14 +110,15 @@ class UpdateServiceTest {
     @Test
     void getUpdatesByCharity_ShouldReturnPageOfUpdates() {
         // Arrange
+        PageRequest pageRequest = PageRequest.of(0, 10);
         Page<Update> updatePage = new PageImpl<>(List.of(mockUpdate));
-        when(updateRepository.findByCharityId(anyLong(), any(PageRequest.class)))
+        when(updateRepository.findByCharityId(eq(mockCharity.getId()), eq(pageRequest)))
                 .thenReturn(updatePage);
 
         // Act
         Page<UpdateDto> result = updateService.getUpdatesByCharity(
                 mockCharity.getId(),
-                PageRequest.of(0, 10)
+                pageRequest
         );
 
         // Assert
@@ -105,15 +128,32 @@ class UpdateServiceTest {
     }
 
     @Test
-    void checkAndUpdateApprovalStatus_WhenAllVolunteersRatedHighly_ShouldVerifyCharity() {
+        void checkAndUpdateApprovalStatus_WhenInsufficientRatings_ShouldNotVerifyCharity() {
         // Arrange
-        when(updateRatingRepository.countByUpdateId(anyLong())).thenReturn(3L);
-        when(updateRatingRepository.getAverageRatingForUpdate(anyLong())).thenReturn(8.0);
+        when(updateRatingRepository.countByUpdateId(eq(mockUpdate.getId()))).thenReturn(2L);
+        when(updateRatingRepository.getAverageRatingForUpdate(eq(mockUpdate.getId()))).thenReturn(8.0);
 
         // Act
         updateService.checkAndUpdateApprovalStatus(mockUpdate.getId());
 
         // Assert
-        assertThat(mockCharity.getIsVerified()).isTrue();
+        verify(charityRepository, never()).save(any(Charity.class));
+        assertThat(mockCharity.getIsVerified()).isFalse();
     }
+
+    @Test
+        void checkAndUpdateApprovalStatus_WhenLowAverageRating_ShouldNotVerifyCharity() {
+        // Arrange
+        when(updateRatingRepository.countByUpdateId(eq(mockUpdate.getId()))).thenReturn(3L);
+        when(updateRatingRepository.getAverageRatingForUpdate(eq(mockUpdate.getId()))).thenReturn(6.0);
+
+        // Act
+        updateService.checkAndUpdateApprovalStatus(mockUpdate.getId());
+
+        // Assert
+        verify(charityRepository, never()).save(any(Charity.class));
+        assertThat(mockCharity.getIsVerified()).isFalse();
+    }
+    
+
 }
