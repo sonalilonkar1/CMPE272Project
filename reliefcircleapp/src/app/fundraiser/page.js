@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import UpdateModal from '@/components/UpdateModal'
 import TransactionsTab from '@/components/TransactionsTab'
 import { showToast } from '@/components/Toast'
+import { fetchFundraiserStats } from '@/redux/features/userSlice'
 
 export default function FundraiserDashboard() {
   const dispatch = useDispatch()
@@ -27,7 +28,7 @@ export default function FundraiserDashboard() {
     updates
   } = useSelector((state) => state.updates)
 
-  const { profile } = useSelector((state) => state.user)
+  const { profile, fundraiserStats } = useSelector((state) => state.user)
   const fundraiserId = profile?.id
   const token = profile?.token
 
@@ -52,6 +53,12 @@ export default function FundraiserDashboard() {
       showToast.success('Stripe connected successfully')
     }
   }, [currentTab, stripeStatus])
+
+  useEffect(() => {
+    if (profile?.token) {
+      dispatch(fetchFundraiserStats({ token: profile.token }))
+    }
+  }, [dispatch, profile?.token])
 
   const handlePageChange = (newPage) => {
     setPage(newPage)
@@ -129,15 +136,21 @@ export default function FundraiserDashboard() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="bg-violet-50 p-6 rounded-lg">
             <h3 className="text-lg font-medium text-violet-900">Total Charities</h3>
-            <p className="mt-2 text-3xl font-bold text-violet-600">12</p>
+            <p className="mt-2 text-3xl font-bold text-violet-600">
+              {fundraiserStats ? fundraiserStats.totalCharities : '—'}
+            </p>
           </div>
           <div className="bg-green-50 p-6 rounded-lg">
-            <h3 className="text-lg font-medium text-green-900">Total Donations</h3>
-            <p className="mt-2 text-3xl font-bold text-green-600">$24,500</p>
+            <h3 className="text-lg font-medium text-green-900">Total Money Received</h3>
+            <p className="mt-2 text-3xl font-bold text-green-600">
+              {fundraiserStats ? `$${fundraiserStats.totalMoneyReceived.toLocaleString()}` : '—'}
+            </p>
           </div>
           <div className="bg-blue-50 p-6 rounded-lg">
             <h3 className="text-lg font-medium text-blue-900">Total Donors</h3>
-            <p className="mt-2 text-3xl font-bold text-blue-600">156</p>
+            <p className="mt-2 text-3xl font-bold text-blue-600">
+              {fundraiserStats ? fundraiserStats.totalDonors : '—'}
+            </p>
           </div>
         </div>
 

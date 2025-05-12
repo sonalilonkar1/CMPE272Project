@@ -38,6 +38,7 @@ export const USER_ENDPOINTS = {
   UPLOAD_AVATAR: `${API_URL}/users/avatar`,
   SIGNUP_VOLUNTEER: `${API_URL}/users/me/volunteer`,
   STATS_DONOR: `${API_URL}/stats/donor`,
+  STATS_FUNDRAISER: `${API_URL}/stats/fundraiser`,
 };
 
 export const FUNDRAISER_UPDATES_ENDPOINT = `${API_URL}/updates/fundraiser/me`;

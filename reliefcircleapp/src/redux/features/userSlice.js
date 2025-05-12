@@ -82,6 +82,25 @@ export const fetchDonorStats = createAsyncThunk(
   }
 );
 
+// Async thunk for fetching fundraiser dashboard stats
+export const fetchFundraiserStats = createAsyncThunk(
+  'user/fetchFundraiserStats',
+  async ({ token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(USER_ENDPOINTS.STATS_FUNDRAISER, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch fundraiser stats';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   profile: null,
   loading: false,
@@ -93,7 +112,10 @@ const initialState = {
   volunteerError: null,
   donorStats: null,
   donorStatsLoading: false,
-  donorStatsError: null
+  donorStatsError: null,
+  fundraiserStats: null,
+  fundraiserStatsLoading: false,
+  fundraiserStatsError: null
 };
 
 const userSlice = createSlice({
@@ -159,6 +181,18 @@ const userSlice = createSlice({
       .addCase(fetchDonorStats.rejected, (state, action) => {
         state.donorStatsLoading = false;
         state.donorStatsError = action.payload;
+      })
+      .addCase(fetchFundraiserStats.pending, (state) => {
+        state.fundraiserStatsLoading = true;
+        state.fundraiserStatsError = null;
+      })
+      .addCase(fetchFundraiserStats.fulfilled, (state, action) => {
+        state.fundraiserStatsLoading = false;
+        state.fundraiserStats = action.payload;
+      })
+      .addCase(fetchFundraiserStats.rejected, (state, action) => {
+        state.fundraiserStatsLoading = false;
+        state.fundraiserStatsError = action.payload;
       });
   }
 });
