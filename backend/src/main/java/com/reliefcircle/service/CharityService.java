@@ -125,22 +125,52 @@ public class CharityService {
             // Save charity to the database
             Charity registeredCharity = charityRepository.save(charity);
             log.info("Charity saved: {}", registeredCharity);
-            
+
             // Convert to DTO for response
             CharityDto saved = convert(registeredCharity);
-            
+
             // Set file URL in the response DTO
             if (registeredCharity.getFileUrl() != null) {
                 saved.setFileUrl(registeredCharity.getFileUrl());
             }
                         
-            // Notify fundraiser about the new charity
-            awsService.pubMessageToFundraiser(saved);
+            // Send notification to all subscribers of the "charity" topic
+            notifyCharityRegistered(saved);
+
             return saved;
         } catch (Exception e) {
             log.error("Error registering charity: {}", e.getMessage(), e);
             throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to register charity: " + e.getMessage());
         }
+    }
+
+    private void notifyCharityRegistered(CharityDto charity) {
+        StringBuilder messageBuilder = new StringBuilder();
+        messageBuilder.append("Hello,\n\nA new charity has been registered on ReliefCircle.\n\n");
+        messageBuilder.append(String.format("Charity Name: %s\n", charity.getName()));
+        if (charity.getOrganizationName() != null && !charity.getOrganizationName().isEmpty()) {
+            messageBuilder.append(String.format("Organization: %s\n", charity.getOrganizationName()));
+        }
+        messageBuilder.append(String.format("Category: %s\n", charity.getCategory()));
+        messageBuilder.append(String.format("Target Amount: %s\n", charity.getTargetAmount()));
+        if (charity.getFundraiserName() != null && !charity.getFundraiserName().isEmpty()) {
+            messageBuilder.append(String.format("Registered By: %s\n", charity.getFundraiserName()));
+        } else if (charity.getFundraiserEmail() != null && !charity.getFundraiserEmail().isEmpty()) {
+            messageBuilder.append(String.format("Registered By: %s\n", charity.getFundraiserEmail()));
+        }
+        messageBuilder.append("\nDescription:\n");
+        messageBuilder.append(charity.getDescription() != null && !charity.getDescription().isEmpty()
+            ? charity.getDescription()
+            : "No description provided.");
+        messageBuilder.append("\n\nBest regards,\nReliefCircle Team");
+
+        awsService.sendNotification(
+            charity.getFundraiserEmail(),
+            "New Charity Registered: " + charity.getName(),
+            messageBuilder.toString(),
+            "charity"
+        );
+        log.info("Notification sent to subscribers of the charity topic.");
     }
 
     public List<CharityDto> getAllCharities() {

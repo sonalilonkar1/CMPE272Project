@@ -1,10 +1,8 @@
 package com.reliefcircle.service;
 
 import com.reliefcircle.dto.UpdateDto;
-import com.reliefcircle.dto.UpdateRatingDto;
 import com.reliefcircle.model.Charity;
 import com.reliefcircle.model.Update;
-import com.reliefcircle.dto.UpdateRatingDto;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.UpdateRepository;

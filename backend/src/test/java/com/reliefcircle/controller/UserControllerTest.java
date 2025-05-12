@@ -5,6 +5,7 @@ import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.service.UserService;
+import com.reliefcircle.service.AWSService;
 import com.reliefcircle.service.CharityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +43,9 @@ class UserControllerTest {
     @Mock
     private Authentication authentication;
 
+    @Mock
+    private AWSService awsService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
     private User testUser;
@@ -49,7 +53,7 @@ class UserControllerTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        UserController controller = new UserController(userService, userRepository, charityService);
+        UserController controller = new UserController(userService, userRepository, charityService, awsService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
 
