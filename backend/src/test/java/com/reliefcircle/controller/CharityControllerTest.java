@@ -13,7 +13,6 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
@@ -85,7 +84,6 @@ class CharityControllerTest {
     @Test
     void testGetAllCharities() throws Exception {
         // Arrange
-        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("name").ascending());
         Page<CharityDto> page = new PageImpl<>(Arrays.asList(testCharityDto));
         when(charityService.getAllCharities(any(PageRequest.class))).thenReturn(page);
 
@@ -190,7 +188,6 @@ class CharityControllerTest {
     @Test
     void testGetVerifiedCharities() throws Exception {
         // Arrange
-        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("name").ascending());
         Page<CharityDto> page = new PageImpl<>(Arrays.asList(testCharityDto));
         when(charityService.getVerifiedCharities(any(PageRequest.class))).thenReturn(page);
 

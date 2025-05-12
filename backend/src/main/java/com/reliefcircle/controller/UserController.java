@@ -12,11 +12,9 @@ import org.springframework.validation.annotation.Validated;
 
 import com.reliefcircle.model.User;
 import com.reliefcircle.service.UserService;
-import com.reliefcircle.service.JwtUserService;
 import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.dto.PaginationRequest;
-import com.reliefcircle.dto.UpdateStripeIdRequest;
 import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.dto.UserDto;
 
@@ -37,15 +35,13 @@ import jakarta.validation.Valid;
 public class UserController {
     
     private final UserService UserService;
-    private final JwtUserService jwtUserService;
     private final UserRepository userRepository;
     private final CharityService charityService;
     
     @Autowired
-    public UserController(UserService UserService, JwtUserService jwtUserService, 
+    public UserController(UserService UserService,
                          UserRepository userRepository, CharityService charityService) {
         this.UserService = UserService;
-        this.jwtUserService = jwtUserService;
         this.userRepository = userRepository;
         this.charityService = charityService;
     }
@@ -202,7 +198,7 @@ public class UserController {
      */
     @PutMapping("/me/stripe-id")
     public ResponseEntity<String> updateStripeId(
-            @Valid @RequestBody UpdateStripeIdRequest request,
+            @Valid @RequestBody String stripeId,
             Authentication authentication
     ) {
         // Get the logged-in user
@@ -218,7 +214,7 @@ public class UserController {
         }
 
         // Update the Stripe ID
-        user.setStripeId(request.getStripeId());
+        user.setStripeId(stripeId);
         userRepository.save(user);
 
         return ResponseEntity.ok("Stripe ID updated successfully");

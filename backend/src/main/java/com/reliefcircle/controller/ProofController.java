@@ -9,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.http.HttpHeaders;
 
 import java.util.List;
 import java.util.Map;
@@ -30,23 +29,6 @@ public class ProofController {
 
 
 
-    /**
-     * Downloads a file from S3
-     *
-     * @param key The S3 key of the file to download
-     * @return ResponseEntity with the file bytes
-     */
-    @GetMapping("/download")
-    public ResponseEntity<byte[]> downloadFile(@RequestParam String key) {
-        byte[] fileBytes = awsService.downloadFile(key); // fetches bytes from S3
-
-        String fileName = key.substring(key.lastIndexOf("/") + 1);
-
-        return ResponseEntity.ok()
-                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
-                .header(HttpHeaders.CONTENT_TYPE, "application/octet-stream")
-                .body(fileBytes);
-    }
 
     /**
      * Uploads a proof document for a charity

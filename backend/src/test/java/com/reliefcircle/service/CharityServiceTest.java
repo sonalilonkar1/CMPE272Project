@@ -1,7 +1,6 @@
 package com.reliefcircle.service;
 
 import com.reliefcircle.dto.CharityDto;
-import com.reliefcircle.exception.CharityException;
 import com.reliefcircle.model.Charity;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.CharityRepository;
@@ -9,12 +8,13 @@ import com.reliefcircle.repository.DonationRepository;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.repository.VerificationRepository;
 import com.reliefcircle.config.PayPalConfig;
-import com.reliefcircle.service.AWSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -25,14 +25,17 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
 class CharityServiceTest {
 
     @Mock
@@ -60,6 +63,10 @@ class CharityServiceTest {
     private CharityDto testCharityDto;
     private User testUser;
     private Charity testCharity;
+
+    private User mockFundraiser;
+    private Charity mockCharity;
+    private CharityDto mockCharityDto;
 
     @BeforeEach
     void setUp() {
@@ -98,6 +105,26 @@ class CharityServiceTest {
 
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
         when(userRepository.findById(any(UUID.class))).thenReturn(Optional.of(testFundraiser));
+
+        mockFundraiser = User.builder()
+                .id(UUID.randomUUID())
+                .email("fundraiser@example.com")
+                .build();
+
+        mockCharity = Charity.builder()
+                .id(1L)
+                .name("Test Charity")
+                .description("Test Description")
+                .targetAmount(BigDecimal.valueOf(10000))
+                .fundraiser(mockFundraiser)
+                .build();
+
+        mockCharityDto = CharityDto.builder()
+                .name("Test Charity")
+                .description("Test Description")
+                .targetAmount(BigDecimal.valueOf(10000))
+                .fundraiserId(mockFundraiser.getId())
+                .build();
     }
 
     @Test
@@ -191,4 +218,50 @@ class CharityServiceTest {
         assertEquals(testCharityDto.getName(), result.getName());
         verify(charityRepository).save(any(Charity.class));
     }
-} 
+
+    @Test
+    void registerCharity_ShouldSaveAndReturnCharity() {
+        // Arrange
+        when(charityRepository.save(any(Charity.class))).thenReturn(mockCharity);
+
+        // Act
+        CharityDto result = charityService.registerCharity(mockCharityDto);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo(mockCharityDto.getName());
+        verify(charityRepository).save(any(Charity.class));
+    }
+
+    @Test
+    void getCharityById_ShouldReturnCharity() {
+        // Arrange
+        when(charityRepository.findById(anyLong())).thenReturn(Optional.of(mockCharity));
+
+        // Act
+        CharityDto result = charityService.getCharityById(1L);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo(mockCharity.getName());
+    }
+
+    @Test
+    void getCharitiesByFundraiser_ShouldReturnPageOfCharities() {
+        // Arrange
+        Page<Charity> charityPage = new PageImpl<>(List.of(mockCharity));
+        when(charityRepository.findByFundraiserId(any(), any(PageRequest.class)))
+                .thenReturn(charityPage);
+
+        // Act
+        Page<CharityDto> result = charityService.getCharitiesByFundraiser(
+                mockFundraiser.getId(),
+                PageRequest.of(0, 10)
+        );
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getName()).isEqualTo(mockCharity.getName());
+    }
+}

@@ -6,6 +6,7 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "updates")
@@ -77,13 +78,23 @@ public class Update {
             return;
         }
 
-        double sum = 0;
-        for (UpdateRating rating : ratings) {
-            sum += rating.getRating();
+        // Only consider ratings greater than 0
+        List<UpdateRating> validRatings = ratings.stream()
+            .filter(r -> r.getRating() > 0)
+            .collect(Collectors.toList());
+
+        if (validRatings.isEmpty()) {
+            this.averageRating = 0.0;
+            this.ratingCount = 0;
+            return;
         }
-        
-        this.averageRating = sum / ratings.size();
-        this.ratingCount = ratings.size();
+
+        double sum = validRatings.stream()
+            .mapToInt(UpdateRating::getRating)
+            .sum();
+
+        this.ratingCount = validRatings.size();
+        this.averageRating = sum / this.ratingCount;
     }
 
     /**

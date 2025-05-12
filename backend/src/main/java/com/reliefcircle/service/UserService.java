@@ -4,7 +4,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import com.reliefcircle.dto.UserDto;
 import com.reliefcircle.exception.ResourceNotFoundException;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.UserRepository;
