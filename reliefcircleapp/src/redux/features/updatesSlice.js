@@ -85,7 +85,7 @@ export const rateUpdate = createAsyncThunk(
   'updates/rateUpdate',
   async ({ updateId, rating, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
+      const response = await axios.put(
         `${RATE_UPDATE_ENDPOINT}/${updateId}/rate?rating=${rating}`,
         {},
         {

@@ -7,7 +7,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
 
 export async function POST(request) {
   try {
-    const { amount, charityId, charityName, stripeAccount } = await request.json();
+    const { amount, charityId, charityName, stripeAccount,donorId } = await request.json();
 
     // Create a Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -31,6 +31,7 @@ export async function POST(request) {
       metadata: {
         charityId,
         charityName,
+        donorId,
       },
     }, stripeAccount ? { stripeAccount } : undefined);
     console.log("session",session)

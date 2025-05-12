@@ -51,26 +51,6 @@ export default function DonorDashboard() {
     }
   ]
 
-  const mockVolunteerUpdates = [
-    {
-      id: 1,
-      charityName: 'Global Food Bank',
-      message: 'Volunteer opportunity: Food distribution this weekend',
-      date: '2024-03-10T10:00:00Z',
-      type: 'EVENT',
-      location: '123 Main St, City',
-      date: '2024-03-15'
-    },
-    {
-      id: 2,
-      charityName: 'Education for All',
-      message: 'Looking for volunteers to help with after-school tutoring',
-      date: '2024-03-08T15:30:00Z',
-      type: 'OPPORTUNITY',
-      location: '456 School Ave, Town',
-      date: '2024-03-20'
-    }
-  ]
 
   const donor = profile || {
     name: 'John Doe',
@@ -208,6 +188,7 @@ export default function DonorDashboard() {
       setIsSubmitting(false)
       handleCloseUpdateModal()
       setRating(0)
+      dispatch(fetchVolunteerUpdates({ token: profile.token }))
     } catch (error) {
       setIsSubmitting(false)
       // Optionally show error toast here, but the thunk already does
@@ -378,11 +359,11 @@ export default function DonorDashboard() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                 <div className="bg-violet-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-violet-900">Total Donated</h3>
-                  <p className="mt-2 text-3xl font-bold text-violet-600">${donorStats.totalDonated?.toLocaleString()}</p>
+                  <p className="mt-2 text-3xl font-bold text-violet-600">${donorStats?.totalDonated?.toLocaleString()}</p>
                 </div>
                 <div className="bg-blue-50 p-6 rounded-lg">
                   <h3 className="text-lg font-medium text-blue-900">Charities Supported</h3>
-                  <p className="mt-2 text-3xl font-bold text-blue-600">{donorStats.totalCharitiesSupported}</p>
+                  <p className="mt-2 text-3xl font-bold text-blue-600">{donorStats?.totalCharitiesSupported}</p>
                 </div>
               </div>
 
@@ -484,28 +465,41 @@ export default function DonorDashboard() {
                           className="bg-gray-50 rounded-lg p-6 cursor-pointer hover:bg-gray-100 transition-colors duration-200"
                           onClick={() => handleOpenUpdateModal(update)}
                         >
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="text-xl font-semibold text-gray-900">{update.donorName}</h4>
-                              <div className="mt-1 flex items-center text-sm text-gray-600">
-                                <span className="font-medium">
-                                  {update.createdAt ? new Date(update.createdAt).toLocaleDateString('en-US', {
-                                    year: 'numeric',
-                                    month: 'long',
-                                    day: 'numeric'
-                                  }) : 'Unknown date'}
-                                </span>
+                          <div className="flex justify-between items-center w-full">
+                            {/* Left side: date, rating, attachment */}
+                            <div className="flex-1 min-w-[320px] flex flex-col justify-between">
+                              <div>
+                                <div className="font-regular text-lg text-gray-900">
+                                  {update.comment ? update.comment : 'No Title'}
+                                </div>
+                                <div className="flex items-center gap-6 mt-1">
+                                  <span className="font-medium text-lg text-gray-900">
+                                    {update.createdAt
+                                      ? new Date(update.createdAt).toLocaleDateString('en-US', {
+                                          year: 'numeric',
+                                          month: 'long',
+                                          day: 'numeric'
+                                        })
+                                      : 'Unknown date'}
+                                  </span>
+                                  {update.fileUrl && (
+                                    <a
+                                      href={update.fileUrl}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="text-violet-600 hover:underline whitespace-nowrap"
+                                    >
+                                      View Attachment
+                                    </a>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                            <span className="ml-1 text-sm text-gray-500">
-                              {update.comment || 'No comment'}
-                            </span>
-                            <span className="ml-1 text-sm text-gray-600">
-                              {typeof update.rating === 'number' ? update.rating.toFixed(1) : 'N/A'}
-                            </span>
-                            {update.rating === 0 && (
+                            
+                            {/* Right side: button */}
+                            {update.rating === 0 ? (
                               <button
-                                className="ml-2 px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700 transition"
+                                className="px-6 py-3 bg-violet-600 text-white rounded hover:bg-violet-700 transition"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleOpenUpdateModal(update)
@@ -513,7 +507,25 @@ export default function DonorDashboard() {
                               >
                                 Show Your Support
                               </button>
-                            )}
+                            ): <div className="w-full flex justify-end mt-1">
+                                {typeof update.rating === 'number' && update.rating > 0 ? (
+                                  <div className="flex items-center">
+                                    {[...Array(Math.round(update.rating))].map((_, i) => (
+                                      <svg
+                                        key={i}
+                                        className="w-5 h-5 text-violet-600"
+                                        fill="currentColor"
+                                        viewBox="0 0 24 24"
+                                      >
+                                        <path d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+                                      </svg>
+                                    ))}
+                                    <span className="ml-2 text-sm text-gray-600">{update.rating}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-sm text-gray-600">N/A</span>
+                                )}
+                              </div>}
                           </div>
                         </div>
                       ))
@@ -539,37 +551,35 @@ export default function DonorDashboard() {
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {selectedUpdate.title}
+                      {selectedUpdate.comment || 'No Title'}
                     </h3>
                     <div className="mb-4 flex items-center text-sm text-gray-600">
-                      <span className="font-medium">{selectedUpdate.date}</span>
-                      <span className="mx-2">•</span>
-                      <span>by {selectedUpdate.organizer}, {selectedUpdate.role}</span>
+                      <span className="font-medium">
+                        {selectedUpdate.createdAt
+                          ? new Date(selectedUpdate.createdAt).toLocaleDateString('en-US', {
+                              year: 'numeric',
+                              month: 'long',
+                              day: 'numeric'
+                            })
+                          : 'Unknown date'}
+                      </span>
                     </div>
-                    <p className="text-gray-600 mb-4">{selectedUpdate.message}</p>
-                    {Array.isArray(selectedUpdate.files) && selectedUpdate.files.length > 0 && (
+                    {selectedUpdate.message && (
+                      <p className="text-gray-600 mb-4">{selectedUpdate.content}</p>
+                    )}
+                    {selectedUpdate.fileUrl && (
                       <div className="border-t border-gray-200 pt-4 mb-6">
-                        <h4 className="text-sm font-medium text-gray-900 mb-2">Attachments</h4>
-                        <div className="space-y-2">
-                          {selectedUpdate.files.map((file, index) => (
-                            <a
-                              key={index}
-                              href={file.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="flex items-center p-2 rounded-lg hover:bg-gray-50"
-                            >
-                              <svg className="h-5 w-5 text-gray-400 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                              </svg>
-                              <span className="text-sm text-violet-600 hover:text-violet-700">{file.name}</span>
-                            </a>
-                          ))}
-                        </div>
+                        <h4 className="text-sm font-medium text-gray-900 mb-2">Attachment</h4>
+                        <a
+                          href={selectedUpdate.fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-violet-600 hover:underline"
+                        >
+                          View Attachment
+                        </a>
                       </div>
                     )}
-
-                    {/* Volunteer Review Section */}
                     <div className="border-t border-gray-200 pt-4">
                       <h4 className="text-sm font-medium text-gray-900 mb-4">Rate this Update</h4>
                       <div className="space-y-4">

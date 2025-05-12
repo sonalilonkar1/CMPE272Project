@@ -1,6 +1,7 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2022-11-15' });
 
 export async function POST(req) {
@@ -20,15 +21,20 @@ export async function POST(req) {
     const session = event.data.object;
     // Record the donation in your backend
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/donations`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/donations`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+          },
         body: JSON.stringify({
           stripeOrderId: session.payment_intent,
           charityId: session.metadata.charityId,
           amount: session.amount_total / 100,
+          donorId: session.metadata.donorId,
         }),
       });
+      const data = await response.json();
+      console.log("webhook data" ,data);
     } catch (err) {
       console.error('Failed to record donation:', err);
     }

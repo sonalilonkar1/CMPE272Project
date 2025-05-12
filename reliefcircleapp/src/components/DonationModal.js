@@ -29,6 +29,7 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
           charityId: charity.id,
           charityName: charity.name,
           stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId :'acct_1RO0YyReABzSigiM',
+          donorId: profile?.id,
         }),
       })
 
