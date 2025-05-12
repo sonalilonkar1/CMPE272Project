@@ -5,7 +5,8 @@ import { useDispatch, useSelector } from 'react-redux'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { fetchDonorDonations } from '@/redux/features/donationsSlice'
-import { fetchVolunteerUpdates } from '@/redux/features/updatesSlice'
+import { fetchVolunteerUpdates, rateUpdate } from '@/redux/features/updatesSlice'
+import { signupAsVolunteer } from '@/redux/features/userSlice'
 import DonationModal from '@/components/DonationModal'
 import { showToast } from '@/components/Toast'
 
@@ -14,7 +15,7 @@ export default function DonorDashboard() {
   const searchParams = useSearchParams()
   const currentTab = searchParams.get('tab') || 'overview'
   const { donations, status, error } = useSelector((state) => state.donations)
-  const { profile } = useSelector((state) => state.user)
+  const { profile, volunteerStatus } = useSelector((state) => state.user)
   const { volunteerUpdates, status: updatesStatus, error: updatesError } = useSelector((state) => state.updates)
   const [selectedCharity, setSelectedCharity] = useState(null)
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false)
@@ -105,6 +106,12 @@ export default function DonorDashboard() {
     }
   }, [paymentStatus])
 
+  useEffect(() => {
+    if (profile?.isVolunteer) {
+      setIsVolunteer(true)
+    }
+  }, [profile?.isVolunteer])
+
   // Calculate impact stats
   const totalDonations = donations.length > 0 
     ? donations.reduce((sum, donation) => sum + donation.amount, 0)
@@ -122,9 +129,18 @@ export default function DonorDashboard() {
     ? Math.round(totalDonations / 500) // Simple calculation: assume $500 supports one project
     : donor.impactStats?.projectsSupported
 
-  const handleVolunteerSignup = () => {
-    setIsVolunteer(true)
-    // Here you would typically make an API call to update the user's volunteer status
+  const handleVolunteerSignup = async () => {
+    if (!profile?.token) {
+      showToast.error('Please sign in to become a volunteer')
+      return
+    }
+
+    try {
+      await dispatch(signupAsVolunteer({ token: profile.token })).unwrap()
+      setIsVolunteer(true)
+    } catch (error) {
+      console.error('Failed to sign up as volunteer:', error)
+    }
   }
 
   // Mock updates data
@@ -175,16 +191,21 @@ export default function DonorDashboard() {
     setRating(newRating)
   }
 
-  const handleReviewSubmit = () => {
+  const handleReviewSubmit = async () => {
     setIsSubmitting(true)
-    // Here you would make an API call to submit the review
-    console.log('Submitting rating:', { rating, updateId: selectedUpdate?.id })
-    setTimeout(() => {
+    try {
+      await dispatch(rateUpdate({
+        updateId: selectedUpdate.id,
+        rating,
+        token: profile.token
+      })).unwrap()
       setIsSubmitting(false)
       handleCloseUpdateModal()
-      // Reset form
       setRating(0)
-    }, 1000)
+    } catch (error) {
+      setIsSubmitting(false)
+      // Optionally show error toast here, but the thunk already does
+    }
   }
 
   const handleCloseUpdateModal = () => {
@@ -418,7 +439,7 @@ export default function DonorDashboard() {
             </div>
           ) : (
             <div className="space-y-6">
-              {!isVolunteer ? (
+              {!profile?.isVolunteer ? (
                 <div className="text-center py-12">
                   <h3 className="text-lg font-medium text-gray-900 mb-4">Become a Volunteer</h3>
                   <p className="text-gray-600 mb-6">
@@ -427,9 +448,14 @@ export default function DonorDashboard() {
                   </p>
                   <button
                     onClick={handleVolunteerSignup}
-                    className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500"
+                    disabled={volunteerStatus === 'loading'}
+                    className={`inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white 
+                      ${volunteerStatus === 'loading' 
+                        ? 'bg-violet-400 cursor-not-allowed' 
+                        : 'bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500'
+                      }`}
                   >
-                    Sign Up as Volunteer
+                    {volunteerStatus === 'loading' ? 'Signing up...' : 'Sign Up as Volunteer'}
                   </button>
                 </div>
               ) : (
@@ -448,12 +474,12 @@ export default function DonorDashboard() {
                       </div>
                     ) : updatesError ? (
                       <div className="text-center text-red-600 py-4">{updatesError}</div>
-                    ) : volunteerUpdates.length === 0 ? (
+                    ) : Array.isArray(volunteerUpdates) && volunteerUpdates.length === 0 ? (
                       <div className="text-center py-8">
                         <p className="text-gray-500">No updates found.</p>
                       </div>
                     ) : (
-                      volunteerUpdates.map((update) => (
+                      Array.isArray(volunteerUpdates) && volunteerUpdates.map((update) => (
                         <div 
                           key={update.id} 
                           className="bg-gray-50 rounded-lg p-6 cursor-pointer hover:bg-gray-100 transition-colors duration-200"
@@ -461,35 +487,34 @@ export default function DonorDashboard() {
                         >
                           <div className="space-y-4">
                             <div>
-                              <h4 className="text-xl font-semibold text-gray-900">{update.charityName}</h4>
+                              <h4 className="text-xl font-semibold text-gray-900">{update.donorName}</h4>
                               <div className="mt-1 flex items-center text-sm text-gray-600">
                                 <span className="font-medium">
-                                  {new Date(update.createdAt).toLocaleDateString('en-US', {
+                                  {update.createdAt ? new Date(update.createdAt).toLocaleDateString('en-US', {
                                     year: 'numeric',
                                     month: 'long',
                                     day: 'numeric'
-                                  })}
+                                  }) : 'Unknown date'}
                                 </span>
-                                <span className="mx-2">•</span>
-                                <span>by {update.fundraiserName}</span>
                               </div>
                             </div>
-                            <p className="text-gray-600 line-clamp-2">{update.text}</p>
-                            {update.fileUrl && (
-                              <div className="flex items-center space-x-2">
-                                <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                                </svg>
-                                <span className="text-sm text-gray-500">1 attachment</span>
-                              </div>
+                            <span className="ml-1 text-sm text-gray-500">
+                              {update.comment || 'No comment'}
+                            </span>
+                            <span className="ml-1 text-sm text-gray-600">
+                              {typeof update.rating === 'number' ? update.rating.toFixed(1) : 'N/A'}
+                            </span>
+                            {update.rating === 0 && (
+                              <button
+                                className="ml-2 px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700 transition"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleOpenUpdateModal(update)
+                                }}
+                              >
+                                Show Your Support
+                              </button>
                             )}
-                            <div className="flex items-center">
-                              <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                              </svg>
-                              <span className="ml-1 text-sm text-gray-600">{update.averageRating.toFixed(1)}</span>
-                              <span className="ml-1 text-sm text-gray-500">({update.ratingCount})</span>
-                            </div>
                           </div>
                         </div>
                       ))
@@ -523,7 +548,7 @@ export default function DonorDashboard() {
                       <span>by {selectedUpdate.organizer}, {selectedUpdate.role}</span>
                     </div>
                     <p className="text-gray-600 mb-4">{selectedUpdate.message}</p>
-                    {selectedUpdate.files.length > 0 && (
+                    {Array.isArray(selectedUpdate.files) && selectedUpdate.files.length > 0 && (
                       <div className="border-t border-gray-200 pt-4 mb-6">
                         <h4 className="text-sm font-medium text-gray-900 mb-2">Attachments</h4>
                         <div className="space-y-2">
