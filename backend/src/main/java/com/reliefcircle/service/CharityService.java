@@ -12,11 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpServerErrorException;
 import com.reliefcircle.exception.ResourceNotFoundException;
-import com.paypal.orders.Order;
-import com.reliefcircle.config.PayPalConfig;
 import com.reliefcircle.dto.CharityDto;
 import com.reliefcircle.dto.DonationDto;
-import com.reliefcircle.paypal.PaymentDetails;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
 import com.reliefcircle.repository.UserRepository;
@@ -37,21 +34,18 @@ public class CharityService {
     private final UserRepository userRepository;
     private final VerificationRepository verificationRepository;
     private final AWSService awsService;
-    private final PayPalConfig payPalConfig;
 
     @Autowired
     public CharityService(CharityRepository charityRepository,
                           DonationRepository donationRepository,
                           UserRepository userRepository,
                           VerificationRepository verificationRepository,
-                          AWSService awsService,
-                          PayPalConfig payPalConfig) {
+                          AWSService awsService) {
         this.charityRepository = charityRepository;
         this.donationRepository = donationRepository;
         this.userRepository = userRepository;
         this.verificationRepository = verificationRepository;
         this.awsService = awsService;
-        this.payPalConfig = payPalConfig;
     }
 
     private CharityDto convert(Charity charity) {
@@ -192,20 +186,6 @@ public class CharityService {
     public Page<DonationDto> getDonations(PageRequest pageRequest) {
         return donationRepository.findAll(pageRequest)
             .map(this::convert);
-    }
-
-    /**
-     * Extract payment details from a PayPal Order object
-     * 
-     * @param order The PayPal Order object
-     * @return PaymentDetails containing amount, email, and currency
-     */
-    private PaymentDetails extractPaymentDetails(Order order) {
-        String email = order.payer().email();
-        double amount = Double.parseDouble(order.purchaseUnits().get(0).amountWithBreakdown().value());
-        String currencyCode = order.purchaseUnits().get(0).amountWithBreakdown().currencyCode();
-
-        return new PaymentDetails(amount, email, currencyCode);
     }
 
     @Transactional

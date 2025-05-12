@@ -39,6 +39,9 @@ public class UpdateRating {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    @Column(name = "file_url")
+    private String fileUrl;
+
     @Column(name = "created_at")
     @Builder.Default
     private LocalDateTime createdAt = LocalDateTime.now();

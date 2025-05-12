@@ -11,7 +11,6 @@ import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
@@ -81,20 +80,13 @@ public class AWSService {
         }
     }
 
-    public byte[] downloadFile(String key) {
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(primaryBucket)
-                .key(key)
-                .build();
-
-        try (InputStream inputStream = s3Client.getObject(getObjectRequest)) {
-            return inputStream.readAllBytes();
-        } catch (IOException e) {
-            throw new RuntimeException("Failed to read file from S3", e);
-        }
-    }
-
-
+    
+    /**
+     * Publishes a message to the SNS topic for charity registration
+     *
+     * @param charityDto Charity information to be sent
+     * @return true if the message was published successfully, false otherwise
+     */
     public boolean pubMessageToFundraiser(CharityDto charityDto) {
         try {
             PublishRequest request = PublishRequest.builder()

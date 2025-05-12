@@ -22,5 +22,6 @@ public class UpdateRatingDto {
     private String comment;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String fileUrl;
     
 }

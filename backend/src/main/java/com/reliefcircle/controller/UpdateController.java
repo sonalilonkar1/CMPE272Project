@@ -13,7 +13,6 @@ import com.reliefcircle.service.UpdateService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-import java.util.UUID;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -312,6 +311,63 @@ public class UpdateController {
     }
 
     /**
+     * Update an existing rating
+     * @param updateRatingId The update ID
+     * @param rating The new rating value (1-10)
+     * @param comment Optional new comment
+     * @param authentication The authentication object
+     * @return The updated rating
+     */
+    @PutMapping("/{ratingId}/rate")
+    public ResponseEntity<UpdateRatingDto> updateRating(
+        @PathVariable("ratingId") @Positive Long ratingId,
+        @RequestParam("rating") @Positive Integer rating,
+        @RequestParam(value = "comment", required = false) String comment,
+        Authentication authentication
+    ) {
+        log.info("Updating rating for update with ID: {} (rating: {})", ratingId, rating);
+
+        // Get donor from authentication
+        User donor;
+        if (authentication.getPrincipal() instanceof User) {
+            donor = (User) authentication.getPrincipal();
+        } else if (authentication.getPrincipal() instanceof UserDetails) {
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+            donor = userRepository
+                .findByEmail(userDetails.getUsername())
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+        } else {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // Only donors can update ratings
+        if (donor.getRole() != User.UserRole.DONOR) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        // Validate rating value
+        if (rating < 1 || rating > 10) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        // Create rating DTO with updated values
+        UpdateRatingDto ratingDto = UpdateRatingDto.builder()
+            .id(ratingId)
+            .rating(rating)
+            .comment(comment)
+            .build();
+
+        // Update the rating
+        UpdateRatingDto updatedRating = updateService.updateRating(
+            ratingId,
+            ratingDto,
+            donor.getId()
+        );
+
+        return ResponseEntity.ok(updatedRating);
+    }
+
+    /**
      * Get ratings for an update
      * @param updateId The update ID
      * @param paginationRequest Pagination parameters
@@ -393,10 +449,16 @@ public class UpdateController {
     ) {
         log.info("Fetching updates for charity ID: {}", charityId);
 
-        Sort sort = Sort.by(
-            paginationRequest.getSortDirection(), 
-            paginationRequest.getSortBy()
-        );
+        // Set default sort if not provided
+        String sortBy = paginationRequest.getSortBy() != null ? 
+                       paginationRequest.getSortBy() : "createdAt";
+                       
+        Sort.Direction sortDirection = Sort.Direction.DESC; // default direction
+        if (paginationRequest.getSortDirection() != null) {
+            sortDirection = Sort.Direction.valueOf(paginationRequest.getSortDirection().toUpperCase());
+        }
+
+        Sort sort = Sort.by(sortDirection, sortBy);
 
         Page<UpdateDto> page = updateService.getUpdatesByCharity(
                 charityId,
@@ -436,6 +498,7 @@ public class UpdateController {
                 .donor(volunteer)
                 .rating(0) // Default rating (e.g., null if not rated yet)
                 .comment(null) // No comment initially
+                .fileUrl(createdUpdate.getFileUrl())
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
