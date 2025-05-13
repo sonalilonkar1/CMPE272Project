@@ -32,26 +32,6 @@ export default function DonorDashboard() {
     { id: 'volunteer', label: 'Updates', href: '/donor?tab=volunteer' },
   ]
 
-  const mockDonations = [
-    {
-      id: 1,
-      charityName: 'Global Education Initiative',
-      amount: 1000,
-      date: '2024-03-01',
-      impact: 'Helped provide education to 20 children',
-      status: 'COMPLETED'
-    },
-    {
-      id: 2,
-      charityName: 'Clean Water Project',
-      amount: 500,
-      date: '2024-02-15',
-      impact: 'Provided clean water to 5 families',
-      status: 'COMPLETED'
-    }
-  ]
-
-
   const donor = profile || {
     name: 'John Doe',
     email: 'john@example.com',
@@ -379,41 +359,26 @@ export default function DonorDashboard() {
                     <div className="text-center text-red-600 py-4">
                       {error}
                     </div>
-                  ) : (donations.length === 0 ? (
-                    mockDonations.map((donation) => (
-                      <div key={donation.id} className="bg-gray-50 rounded-lg p-6">
-                        <div className="flex justify-between items-start mb-4">
-                          <div>
-                            <h4 className="text-lg font-medium text-gray-900">{donation.charityName}</h4>
-                            <p className="text-sm text-gray-500">
-                              {new Date(donation.date).toLocaleDateString()}
-                            </p>
-                          </div>
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            ${donation.amount}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">{donation.impact}</p>
-                      </div>
-                    ))
                   ) : (
                     donations.map((donation) => (
                       <div key={donation.id} className="bg-gray-50 rounded-lg p-6">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h4 className="text-lg font-medium text-gray-900">{donation.charity}</h4>
+                            <h4 className="text-lg font-medium text-gray-900">{donation.charityName}</h4>
                             <p className="text-sm text-gray-500">
-                              {new Date(donation.date).toLocaleDateString()}
+                              {donation.createdAt ? new Date(donation.createdAt).toLocaleDateString() : ''}
                             </p>
                           </div>
                           <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                             ${donation.amount}
                           </span>
                         </div>
-                        <p className="text-sm text-gray-600">Donation to {donation.charity}</p>
+                        <p className="text-sm text-gray-600">
+                          Status: {"Confirmed" || 'N/A'}
+                        </p>
                       </div>
                     ))
-                  ))}
+                  )}
                 </div>
               </div>
             </div>
@@ -473,7 +438,7 @@ export default function DonorDashboard() {
                                   {update.comment ? update.comment : 'No Title'}
                                 </div>
                                 <div className="flex items-center gap-6 mt-1">
-                                  <span className="font-medium text-lg text-gray-900">
+                                  <span className="font-regular text-sm text-gray-900">
                                     {update.createdAt
                                       ? new Date(update.createdAt).toLocaleDateString('en-US', {
                                           year: 'numeric',
