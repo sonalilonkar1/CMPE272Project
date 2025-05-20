@@ -6,6 +6,7 @@ import com.reliefcircle.dto.UpdateDto;
 import com.reliefcircle.dto.UpdateRatingDto;
 import com.reliefcircle.model.UpdateRating;
 import com.reliefcircle.model.User;
+import com.reliefcircle.model.User.UserRole;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.repository.UpdateRepository;
 import com.reliefcircle.repository.UpdateRatingRepository;
@@ -214,7 +215,7 @@ public class UpdateController {
         // Save the update
         UpdateDto createdUpdate = updateService.createUpdate(updateDto);
 
-        // Notify 10 random donors who are volunteers and have not donated to this charity
+        // Notify 10 random donors who are volunteers
         notifyRandomVolunteers(charityId, createdUpdate);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUpdate);
@@ -254,65 +255,8 @@ public class UpdateController {
     }
 
     /**
-     * Rate an update
-     * @param updateId The update ID
-     * @param rating The rating value (1-10)
-     * @param comment Optional comment to accompany the rating
-     * @param authentication The authentication object
-     * @return The created rating
-     */
-    @PostMapping("/{updateId}/rate")
-    public ResponseEntity<UpdateRatingDto> rateUpdate(
-        @PathVariable("updateId") @Positive Long updateId,
-        @RequestParam("rating") @Positive Integer rating,
-        @RequestParam(value = "comment", required = false) String comment,
-        Authentication authentication
-    ) {
-        log.info("Rating update with ID: {} (rating: {})", updateId, rating);
-
-        // Get donor from authentication
-        User donor;
-        if (authentication.getPrincipal() instanceof User) {
-            donor = (User) authentication.getPrincipal();
-        } else if (authentication.getPrincipal() instanceof UserDetails) {
-            UserDetails userDetails =
-                (UserDetails) authentication.getPrincipal();
-            donor = userRepository
-                .findByEmail(userDetails.getUsername())
-                .orElseThrow(() -> new IllegalStateException("User not found"));
-        } else {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-
-        // Only donors can rate updates
-        if (donor.getRole() != User.UserRole.DONOR) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
-        }
-
-        // Validate rating value
-        if (rating < 1 || rating > 10) {
-            return ResponseEntity.badRequest().body(null);
-        }
-
-        // Create rating DTO
-        UpdateRatingDto ratingDto = UpdateRatingDto.builder()
-            .updateId(updateId)
-            .rating(rating)
-            .comment(comment)
-            .build();
-
-        // Save the rating
-        UpdateRatingDto createdRating = updateService.rateUpdate(
-            updateId,
-            ratingDto,
-            donor.getId()
-        );
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdRating);
-    }
-
-    /**
      * Update an existing rating
-     * @param updateRatingId The update ID
+     * @param ratingId The update ID
      * @param rating The new rating value (1-10)
      * @param comment Optional new comment
      * @param authentication The authentication object
@@ -489,9 +433,11 @@ public class UpdateController {
     private void notifyRandomVolunteers(Long charityId, UpdateDto createdUpdate) {
         log.info("Notifying volunteers about Updates for charity ID: {}", charityId);
 
-        // Fetch 10 random volunteers who have not donated to this charity
-        List<User> volunteers = userRepository.findRandomVolunteersNotDonatedToCharity(charityId, 10);
-
+        // Fetch olunteers 
+        List<User> volunteers = userRepository.findByRoleAndIsVolunteerTrue(UserRole.DONOR);
+        // prints count of volunteers
+        log.info("Total volunteers found: {}", volunteers.size());
+        
         // Send notifications to the selected volunteers
         for (User volunteer : volunteers) {
             log.info("Notifying volunteer: {}", volunteer.getEmail());
