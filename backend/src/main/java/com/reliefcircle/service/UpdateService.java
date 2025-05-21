@@ -319,6 +319,8 @@ public class UpdateService {
                 .createdAt(rating.getCreatedAt())
                 .updatedAt(rating.getUpdatedAt())
                 .fileUrl(rating.getFileUrl())
+                .updateText(rating.getUpdate().getText())
+                .charityName(rating.getUpdate().getCharity().getName())
                 .build();
                 
     }
