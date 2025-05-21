@@ -8,6 +8,7 @@ import { useSearchParams } from 'next/navigation'
 import UpdateModal from '@/components/UpdateModal'
 import TransactionsTab from '@/components/TransactionsTab'
 import { showToast } from '@/components/Toast'
+import { fetchFundraiserStats } from '@/redux/features/userSlice'
 
 export default function FundraiserDashboard() {
   const dispatch = useDispatch()
@@ -27,7 +28,7 @@ export default function FundraiserDashboard() {
     updates
   } = useSelector((state) => state.updates)
 
-  const { profile } = useSelector((state) => state.user)
+  const { profile, fundraiserStats } = useSelector((state) => state.user)
   const fundraiserId = profile?.id
   const token = profile?.token
 
@@ -53,6 +54,12 @@ export default function FundraiserDashboard() {
     }
   }, [currentTab, stripeStatus])
 
+  useEffect(() => {
+    if (profile?.token) {
+      dispatch(fetchFundraiserStats({ token: profile.token }))
+    }
+  }, [dispatch, profile?.token])
+
   const handlePageChange = (newPage) => {
     setPage(newPage)
   }
@@ -63,7 +70,6 @@ export default function FundraiserDashboard() {
   }
 
   const tabs = [
-    { id: 'overview', label: 'Overview', href: '/fundraiser?tab=overview' },
     { id: 'charities', label: 'My Charities', href: '/fundraiser?tab=charities' },
     { id: 'updates', label: 'Updates', href: '/fundraiser?tab=updates' },
     { id: 'transactions', label: 'Transactions', href: '/fundraiser?tab=transactions' },
@@ -110,24 +116,42 @@ export default function FundraiserDashboard() {
         {/* Page Header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-gray-900 mt-10">
-            {currentTab === 'overview' 
-              ? 'Fundraiser Overview' 
-              : currentTab === 'updates'
+            {currentTab === 'updates'
               ? 'Charity Updates'
               : currentTab === 'transactions'
               ? 'Transactions'
               : 'My Charities'}
           </h1>
           <p className="mt-2 text-sm text-gray-600">
-            {currentTab === 'overview' 
-              ? 'View your fundraising statistics and overall impact'
-              : currentTab === 'updates'
+            {currentTab === 'updates'
               ? 'Keep your donors informed about charity progress and milestones'
               : currentTab === 'transactions'
               ? 'Manage your payment processing and view transaction history'
               : 'Manage your charitable organizations and campaigns'
             }
           </p>
+        </div>
+
+        {/* Overview Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-violet-50 p-6 rounded-lg">
+            <h3 className="text-lg font-medium text-violet-900">Total Charities</h3>
+            <p className="mt-2 text-3xl font-bold text-violet-600">
+              {fundraiserStats ? fundraiserStats.totalCharities : '—'}
+            </p>
+          </div>
+          <div className="bg-green-50 p-6 rounded-lg">
+            <h3 className="text-lg font-medium text-green-900">Total Money Received</h3>
+            <p className="mt-2 text-3xl font-bold text-green-600">
+              {fundraiserStats ? `$${fundraiserStats.totalMoneyReceived.toLocaleString()}` : '—'}
+            </p>
+          </div>
+          <div className="bg-blue-50 p-6 rounded-lg">
+            <h3 className="text-lg font-medium text-blue-900">Total Donors</h3>
+            <p className="mt-2 text-3xl font-bold text-blue-600">
+              {fundraiserStats ? fundraiserStats.totalDonors : '—'}
+            </p>
+          </div>
         </div>
 
         {/* Tabs */}
@@ -153,33 +177,7 @@ export default function FundraiserDashboard() {
 
         {/* Tab Content */}
         <div className="bg-white shadow rounded-lg p-6">
-          {currentTab === 'overview' ? (
-            <div className="space-y-6">
-              {/* Overview Content */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-violet-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-violet-900">Total Charities</h3>
-                  <p className="mt-2 text-3xl font-bold text-violet-600">12</p>
-                </div>
-                <div className="bg-green-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-green-900">Total Donations</h3>
-                  <p className="mt-2 text-3xl font-bold text-green-600">$24,500</p>
-                </div>
-                <div className="bg-blue-50 p-6 rounded-lg">
-                  <h3 className="text-lg font-medium text-blue-900">Total Donors</h3>
-                  <p className="mt-2 text-3xl font-bold text-blue-600">156</p>
-                </div>
-              </div>
-
-              {/* Recent Activity */}
-              <div className="mt-8">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Activity</h3>
-                <div className="space-y-4">
-                  <p className="text-sm text-gray-500">No recent activity to display.</p>
-                </div>
-              </div>
-            </div>
-          ) : currentTab === 'updates' ? (
+          {currentTab === 'updates' ? (
             <div className="space-y-6">
               {updatesStatus === 'loading' ? (
                 <div className="text-center py-4">
@@ -223,11 +221,17 @@ export default function FundraiserDashboard() {
                       <p className="text-gray-600 mb-4">{update.text}</p>
                       {update.fileUrl && (
                         <div className="mt-4">
-                          <img
-                            src={update.fileUrl}
-                            alt="Update media"
-                            className="rounded-lg max-h-64 w-auto"
-                          />
+                          <a
+                            href={update.fileUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-violet-600 hover:text-violet-700"
+                          >
+                            <svg className="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                            </svg>
+                            Download Attachment
+                          </a>
                         </div>
                       )}
                     </div>
@@ -287,12 +291,23 @@ export default function FundraiserDashboard() {
                             <p className="text-sm text-gray-600 mt-2">{charity.description}</p>
                           )}
                         </div>
-                        <button
-                          onClick={() => handleOpenUpdateModal(charity)}
-                          className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-violet-600 bg-violet-100 hover:bg-violet-200"
-                        >
-                          Send Update
-                        </button>
+                        {charity.raisedAmount >= charity.targetAmount ? (
+                          <div className="text-center">
+                            <span className="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium bg-green-100 text-green-800">
+                              <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
+                              </svg>
+                              Goal Achieved!
+                            </span>
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => handleOpenUpdateModal(charity)}
+                            className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-md text-violet-600 bg-violet-100 hover:bg-violet-200"
+                          >
+                            Send Update
+                          </button>
+                        )}
                       </div>
                       <div className="mt-4">
                         <div className="flex space-x-4 text-sm text-gray-600">
@@ -309,6 +324,13 @@ export default function FundraiserDashboard() {
                             style={{ width: `${Math.min((charity.raisedAmount / charity.targetAmount) * 100, 100)}%` }}
                           ></div>
                         </div>
+                        {charity.raisedAmount >= charity.targetAmount && (
+                          <div className="mt-3 text-center">
+                            <p className="text-sm font-medium text-green-600">
+                              🎉 Congratulations! You&apos;ve reached your fundraising goal!
+                            </p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))

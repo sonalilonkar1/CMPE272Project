@@ -1,11 +1,13 @@
 import Stripe from 'stripe';
 import { NextResponse } from 'next/server';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+  apiVersion: '2022-11-15',
+});
 
 export async function POST(request) {
   try {
-    const { amount, charityId, charityName } = await request.json();
+    const { amount, charityId, charityName, stripeAccount,donorId } = await request.json();
 
     // Create a Stripe Checkout Session
     const session = await stripe.checkout.sessions.create({
@@ -29,12 +31,13 @@ export async function POST(request) {
       metadata: {
         charityId,
         charityName,
+        donorId,
       },
-    });
-
-    return NextResponse.json({ sessionId: session.id });
+    }, stripeAccount ? { stripeAccount } : undefined);
+    console.log("session",session)
+    return NextResponse.json({ url: session.url, sessionId: session.id });
   } catch (error) {
-    console.error('Stripe error:', error);
+    // console.error('Stripe error:', error);
     return NextResponse.json(
       { message: error.message || 'Failed to create payment' },
       { status: 500 }

@@ -8,7 +8,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -32,14 +31,6 @@ public interface UpdateRepository extends JpaRepository<Update, Long> {
     Page<Update> findByDonorIdOrderByCreatedAtDesc(@Param("donorId") UUID donorId, Pageable pageable);
     
     /**
-     * Find all updates for charities verified by a volunteer
-     */
-    @Query("SELECT DISTINCT u FROM Update u JOIN u.charity c " +
-           "WHERE c.isVerified = true AND EXISTS (SELECT v FROM Verification v WHERE v.charity = c AND v.volunteer.id = :volunteerId) " +
-           "ORDER BY u.createdAt DESC")
-    Page<Update> findByVolunteerIdOrderByCreatedAtDesc(@Param("volunteerId") UUID volunteerId, Pageable pageable);
-
-    /**
      * Find top rated updates
      */
     Page<Update> findByAverageRatingGreaterThanEqualOrderByAverageRatingDesc(Double minRating, Pageable pageable);
@@ -58,4 +49,9 @@ public interface UpdateRepository extends JpaRepository<Update, Long> {
      * Count updates by fundraiser
      */
     Long countByFundraiserId(UUID fundraiserId);
+
+    /**
+     * Find all updates for a specific charity
+     */
+    Page<Update> findByCharityId(Long charityId, Pageable pageable);
 }

@@ -6,6 +6,7 @@ import com.reliefcircle.dto.UpdateDto;
 import com.reliefcircle.dto.UpdateRatingDto;
 import com.reliefcircle.model.UpdateRating;
 import com.reliefcircle.model.User;
+import com.reliefcircle.model.User.UserRole;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.repository.UpdateRepository;
 import com.reliefcircle.repository.UpdateRatingRepository;
@@ -13,7 +14,6 @@ import com.reliefcircle.service.UpdateService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
-import java.util.UUID;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -28,6 +28,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.data.domain.Sort;
 
 @Slf4j
 @Validated
@@ -119,8 +120,11 @@ public class UpdateController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
+        log.info("User role: {}", volunteer.getRole());
+
         // Ensure the user is a volunteer
-        if (volunteer.getRole() != User.UserRole.VOLUNTEER) {
+        if (!volunteer.getIsVolunteer()) {
+            log.warn("User is not a volunteer");
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
@@ -211,7 +215,7 @@ public class UpdateController {
         // Save the update
         UpdateDto createdUpdate = updateService.createUpdate(updateDto);
 
-        // Notify 10 random donors who are volunteers and have not donated to this charity
+        // Notify 10 random donors who are volunteers
         notifyRandomVolunteers(charityId, createdUpdate);
 
         return ResponseEntity.status(HttpStatus.CREATED).body(createdUpdate);
@@ -251,29 +255,28 @@ public class UpdateController {
     }
 
     /**
-     * Rate an update
-     * @param updateId The update ID
-     * @param rating The rating value (1-5)
-     * @param comment Optional comment to accompany the rating
+     * Update an existing rating
+     * @param ratingId The update ID
+     * @param rating The new rating value (1-10)
+     * @param comment Optional new comment
      * @param authentication The authentication object
-     * @return The created rating
+     * @return The updated rating
      */
-    @PostMapping("/{updateId}/rate")
-    public ResponseEntity<UpdateRatingDto> rateUpdate(
-        @PathVariable("updateId") @Positive Long updateId,
+    @PutMapping("/{ratingId}/rate")
+    public ResponseEntity<UpdateRatingDto> updateRating(
+        @PathVariable("ratingId") @Positive Long ratingId,
         @RequestParam("rating") @Positive Integer rating,
         @RequestParam(value = "comment", required = false) String comment,
         Authentication authentication
     ) {
-        log.info("Rating update with ID: {} (rating: {})", updateId, rating);
+        log.info("Updating rating for update with ID: {} (rating: {})", ratingId, rating);
 
         // Get donor from authentication
         User donor;
         if (authentication.getPrincipal() instanceof User) {
             donor = (User) authentication.getPrincipal();
         } else if (authentication.getPrincipal() instanceof UserDetails) {
-            UserDetails userDetails =
-                (UserDetails) authentication.getPrincipal();
+            UserDetails userDetails = (UserDetails) authentication.getPrincipal();
             donor = userRepository
                 .findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new IllegalStateException("User not found"));
@@ -281,30 +284,31 @@ public class UpdateController {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // Only donors can rate updates
+        // Only donors can update ratings
         if (donor.getRole() != User.UserRole.DONOR) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(null);
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
         // Validate rating value
-        if (rating < 1 || rating > 5) {
-            return ResponseEntity.badRequest().body(null);
+        if (rating < 1 || rating > 10) {
+            return ResponseEntity.badRequest().build();
         }
 
-        // Create rating DTO
+        // Create rating DTO with updated values
         UpdateRatingDto ratingDto = UpdateRatingDto.builder()
-            .updateId(updateId)
+            .id(ratingId)
             .rating(rating)
             .comment(comment)
             .build();
 
-        // Save the rating
-        UpdateRatingDto createdRating = updateService.rateUpdate(
-            updateId,
+        // Update the rating
+        UpdateRatingDto updatedRating = updateService.updateRating(
+            ratingId,
             ratingDto,
             donor.getId()
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(createdRating);
+
+        return ResponseEntity.ok(updatedRating);
     }
 
     /**
@@ -376,31 +380,91 @@ public class UpdateController {
         return ResponseEntity.noContent().build();
     }
 
-    private void notifyRandomVolunteers(Long charityId, UpdateDto createdUpdate) {
-    log.info("Notifying 10 random volunteers for charity ID: {}", charityId);
+    /**
+     * Get updates for a specific charity
+     * @param charityId The charity ID
+     * @param paginationRequest Pagination parameters
+     * @return Paginated list of updates for the charity
+     */
+    @GetMapping("/charity/{charityId}")
+    public ResponseEntity<PaginatedResponse<UpdateDto>> getUpdatesForCharity(
+            @PathVariable("charityId") @Positive Long charityId,
+            @Valid PaginationRequest paginationRequest
+    ) {
+        log.info("Fetching updates for charity ID: {}", charityId);
 
-    // Fetch 10 random volunteers who have not donated to this charity
-    List<User> volunteers = userRepository.findRandomVolunteersNotDonatedToCharity(charityId, 10);
+        // Set default sort if not provided
+        String sortBy = paginationRequest.getSortBy() != null ? 
+                       paginationRequest.getSortBy() : "createdAt";
+                       
+        Sort.Direction sortDirection = Sort.Direction.DESC; // default direction
+        if (paginationRequest.getSortDirection() != null) {
+            sortDirection = Sort.Direction.valueOf(paginationRequest.getSortDirection().toUpperCase());
+        }
 
-    // Send notifications to the selected volunteers
-    for (User volunteer : volunteers) {
-        log.info("Notifying volunteer: {}", volunteer.getEmail());
+        Sort sort = Sort.by(sortDirection, sortBy);
 
-         // Add an entry to update_ratings for the volunteer
-        UpdateRating updateRating = UpdateRating.builder()
-                .update(updateRepository.findById(createdUpdate.getId())
-                        .orElseThrow(() -> new RuntimeException("Update not found with ID: " + createdUpdate.getId())))
-                .donor(volunteer)
-                .rating(0) // Default rating (e.g., null if not rated yet)
-                .comment(null) // No comment initially
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+        Page<UpdateDto> page = updateService.getUpdatesByCharity(
+                charityId,
+                PageRequest.of(
+                    paginationRequest.getPageNumber(),
+                    paginationRequest.getPageSize(),
+                    sort
+                )
+        );
+
+        PaginatedResponse<UpdateDto> response = PaginatedResponse.<UpdateDto>builder()
+                .content(page.getContent())
+                .pageNumber(page.getNumber())
+                .pageSize(page.getSize())
+                .totalElements(page.getTotalElements())
+                .totalPages(page.getTotalPages())
+                .last(page.isLast())
                 .build();
 
-        updateRatingRepository.save(updateRating);
-
-        // Implement your notification logic here (e.g., email, SMS, push notification)
-        updateService.sendNotificationToVolunteer(volunteer, createdUpdate);
+        return ResponseEntity.ok(response);
     }
-}
+
+    /**
+     * Notify 10 random volunteers who have not donated to this charity
+     * @param charityId The charity ID
+     * @param createdUpdate The created update
+     */
+    private void notifyRandomVolunteers(Long charityId, UpdateDto createdUpdate) {
+        log.info("Notifying volunteers about Updates for charity ID: {}", charityId);
+
+        // Fetch olunteers 
+        List<User> volunteers = userRepository.findByRoleAndIsVolunteerTrue(UserRole.DONOR);
+        // prints count of volunteers
+        log.info("Total volunteers found: {}", volunteers.size());
+        
+        // Send notifications to the selected volunteers
+        for (User volunteer : volunteers) {
+            log.info("Notifying volunteer: {}", volunteer.getEmail());
+
+            // Check if volunteer has already received any update from this charity
+            if (updateRatingRepository.hasVolunteerRatedAnyUpdateForCharity(createdUpdate.getCharityId(), volunteer.getId())) {
+                log.debug("Volunteer {} has already received an update from charity {}. Skipping notification.", 
+                    volunteer.getEmail(), createdUpdate.getCharityId());
+                return;
+            }
+            // Add an entry to update_ratings for the volunteer
+            UpdateRating updateRating = UpdateRating.builder()
+                    .update(updateRepository.findById(createdUpdate.getId())
+                            .orElseThrow(() -> new RuntimeException("Update not found with ID: " + createdUpdate.getId())))
+                    .donor(volunteer)
+                    .rating(0) // Default rating (e.g., null if not rated yet)
+                    .comment(null) // No comment initially
+                    .fileUrl(createdUpdate.getFileUrl())
+                    .createdAt(LocalDateTime.now())
+                    .updatedAt(LocalDateTime.now())
+                    .build();
+
+            updateRatingRepository.save(updateRating);
+
+        }
+
+        // Send notification to the selected volunteers
+        updateService.sendNotificationToVolunteer(createdUpdate);
+    }
 }

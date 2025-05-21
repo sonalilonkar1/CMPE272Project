@@ -12,16 +12,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpServerErrorException;
 import com.reliefcircle.exception.ResourceNotFoundException;
-import com.paypal.orders.Order;
-import com.reliefcircle.config.PayPalConfig;
 import com.reliefcircle.dto.CharityDto;
 import com.reliefcircle.dto.DonationDto;
-import com.reliefcircle.paypal.PaymentDetails;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
 import com.reliefcircle.repository.UserRepository;
-import com.reliefcircle.repository.VerificationRepository;
-import com.reliefcircle.dto.VerificationDto;
 import com.reliefcircle.model.*;
 import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
@@ -35,23 +30,17 @@ public class CharityService {
     private final CharityRepository charityRepository;
     private final DonationRepository donationRepository;
     private final UserRepository userRepository;
-    private final VerificationRepository verificationRepository;
     private final AWSService awsService;
-    private final PayPalConfig payPalConfig;
 
     @Autowired
     public CharityService(CharityRepository charityRepository,
                           DonationRepository donationRepository,
                           UserRepository userRepository,
-                          VerificationRepository verificationRepository,
-                          AWSService awsService,
-                          PayPalConfig payPalConfig) {
+                          AWSService awsService) {
         this.charityRepository = charityRepository;
         this.donationRepository = donationRepository;
         this.userRepository = userRepository;
-        this.verificationRepository = verificationRepository;
         this.awsService = awsService;
-        this.payPalConfig = payPalConfig;
     }
 
     private CharityDto convert(Charity charity) {
@@ -68,6 +57,7 @@ public class CharityService {
             .fundraiserId(charity.getFundraiser() != null ? charity.getFundraiser().getId() : null)
             .fundraiserName(charity.getFundraiser() != null ? charity.getFundraiser().getFullName() : null)
             .fundraiserEmail(charity.getFundraiser() != null ? charity.getFundraiser().getEmail() : null)
+            .fundraiserStripeId(charity.getFundraiser() != null ? charity.getFundraiser().getStripeId() : null)
             .fileUrl(charity.getFileUrl())
             .build();
     }
@@ -90,7 +80,6 @@ public class CharityService {
 
     public CharityDto registerCharity(CharityDto dto) {
         log.info("Register Req: {}", dto);
-        System.out.println("Target amount in DTO: " + dto.getTargetAmount());
 
         if (dto.getName() == null || dto.getName().trim().isEmpty()) {
             throw new IllegalArgumentException("Charity name is required");
@@ -103,7 +92,6 @@ public class CharityService {
         }
 
         BigDecimal targetAmount = dto.getTargetAmount() != null ? dto.getTargetAmount() : BigDecimal.ZERO;
-        System.out.println("Setting target amount to: " + targetAmount);
 
         Charity charity = Charity.builder()
             .name(dto.getName())
@@ -114,6 +102,7 @@ public class CharityService {
             .raisedAmount(BigDecimal.ZERO)
             .isVerified(false)
             .fundraiser(fundraiser)
+            .fundraiserStripeId(fundraiser.getStripeId())
             .build();
 
         try {
@@ -130,26 +119,52 @@ public class CharityService {
 
             // Save charity to the database
             Charity registeredCharity = charityRepository.save(charity);
-            System.out.println("Saved charity with target amount: " + registeredCharity.getTargetAmount());
             log.info("Charity saved: {}", registeredCharity);
-            
+
             // Convert to DTO for response
             CharityDto saved = convert(registeredCharity);
-            
+
             // Set file URL in the response DTO
             if (registeredCharity.getFileUrl() != null) {
                 saved.setFileUrl(registeredCharity.getFileUrl());
             }
-            
-            System.out.println("Converted DTO target amount: " + saved.getTargetAmount());
-            
-            // Notify fundraiser about the new charity
-            awsService.pubMessageToFundraiser(saved);
+                        
+            // Send notification to all subscribers of the "charity" topic
+            notifyCharityRegistered(saved);
+
             return saved;
         } catch (Exception e) {
             log.error("Error registering charity: {}", e.getMessage(), e);
             throw new HttpServerErrorException(HttpStatus.INTERNAL_SERVER_ERROR, "Failed to register charity: " + e.getMessage());
         }
+    }
+
+    private void notifyCharityRegistered(CharityDto charity) {
+        StringBuilder messageBuilder = new StringBuilder();
+        messageBuilder.append("Hello,\n\nA new charity has been registered on ReliefCircle.\n\n");
+        messageBuilder.append(String.format("Charity Name: %s\n", charity.getName()));
+        if (charity.getOrganizationName() != null && !charity.getOrganizationName().isEmpty()) {
+            messageBuilder.append(String.format("Organization: %s\n", charity.getOrganizationName()));
+        }
+        messageBuilder.append(String.format("Category: %s\n", charity.getCategory()));
+        messageBuilder.append(String.format("Target Amount: %s\n", charity.getTargetAmount()));
+        if (charity.getFundraiserName() != null && !charity.getFundraiserName().isEmpty()) {
+            messageBuilder.append(String.format("Registered By: %s\n", charity.getFundraiserName()));
+        } else if (charity.getFundraiserEmail() != null && !charity.getFundraiserEmail().isEmpty()) {
+            messageBuilder.append(String.format("Registered By: %s\n", charity.getFundraiserEmail()));
+        }
+        messageBuilder.append("\nDescription:\n");
+        messageBuilder.append(charity.getDescription() != null && !charity.getDescription().isEmpty()
+            ? charity.getDescription()
+            : "No description provided.");
+        messageBuilder.append("\n\nBest regards,\nReliefCircle Team");
+
+        awsService.sendNotification(
+            "New Charity Registered: " + charity.getName(),
+            messageBuilder.toString(),
+            "charity"
+        );
+        log.info("Notification sent to subscribers of the charity topic.");
     }
 
     public List<CharityDto> getAllCharities() {
@@ -197,20 +212,6 @@ public class CharityService {
             .map(this::convert);
     }
 
-    /**
-     * Extract payment details from a PayPal Order object
-     * 
-     * @param order The PayPal Order object
-     * @return PaymentDetails containing amount, email, and currency
-     */
-    private PaymentDetails extractPaymentDetails(Order order) {
-        String email = order.payer().email();
-        double amount = Double.parseDouble(order.purchaseUnits().get(0).amountWithBreakdown().value());
-        String currencyCode = order.purchaseUnits().get(0).amountWithBreakdown().currencyCode();
-
-        return new PaymentDetails(amount, email, currencyCode);
-    }
-
     @Transactional
     public DonationDto addDonation(DonationDto donationDto) {
         User donor = userRepository.findById(donationDto.getDonorId())
@@ -219,7 +220,7 @@ public class CharityService {
                 .orElseThrow(() -> new CharityException("Charity not found"));
 
         Donation donation = Donation.builder()
-            .paypalOrderId(donationDto.getPaypalOrderId())
+            .stripeOrderId(donationDto.getStripeOrderId())
             .donor(donor)
             .charity(charity)
             .amount(donationDto.getAmount())
@@ -229,9 +230,17 @@ public class CharityService {
 
         Donation savedDonation = donationRepository.save(donation);
 
+        // Update the related charity
+        if (charity != null) {
+            // Update the raisedAmount
+            BigDecimal newRaisedAmount = charity.getRaisedAmount().add(BigDecimal.valueOf(savedDonation.getAmount()));
+            charity.setRaisedAmount(newRaisedAmount);
+            charityRepository.save(charity);
+        }
+
         return DonationDto.builder()
                 .id(savedDonation.getId())
-                .paypalOrderId(savedDonation.getPaypalOrderId())
+                .stripeOrderId(savedDonation.getStripeOrderId())
                 .donorId(savedDonation.getDonor().getId())
                 .donorName(savedDonation.getDonor().getFullName())
                 .donorEmail(savedDonation.getDonor().getEmail())
@@ -241,36 +250,6 @@ public class CharityService {
                 .status(savedDonation.getStatus())
                 .createdAt(savedDonation.getCreatedAt())
                 .build();
-    }
-
-    @Transactional
-    public VerificationDto submitVerification(Long verificationId, String comments, String status) {
-        Verification verification = verificationRepository.findById(verificationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Verification not found with ID: " + verificationId));
-
-        Verification.VerificationStatus newStatus = Verification.VerificationStatus.valueOf(status.toUpperCase());
-        verification.setStatus(newStatus);
-        verification.setComment(comments);
-        verification.setReviewedAt(LocalDateTime.now());
-
-        Verification updated = verificationRepository.save(verification);
-        return convertVerification(updated);
-    }
-
-    private VerificationDto convertVerification(Verification verification) {
-        return VerificationDto.builder()
-            .id(verification.getId())
-            .volunteerId(verification.getVolunteer().getId())
-            .volunteerName(verification.getVolunteer().getFullName())
-            .volunteerEmail(verification.getVolunteer().getEmail())
-            .charityId(verification.getCharity().getId())
-            .charityName(verification.getCharity().getName())
-            .proofId(verification.getProof() != null ? verification.getProof().getId() : null)
-            .proofDescription(verification.getProof() != null ? verification.getProof().getDescription() : null)
-            .status(verification.getStatus().name())
-            .comment(verification.getComment())
-            .reviewedAt(verification.getReviewedAt())
-            .build();
     }
 
     @Transactional

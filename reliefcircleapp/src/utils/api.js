@@ -36,10 +36,15 @@ export const USER_ENDPOINTS = {
   UPDATE_PROFILE: `${API_URL}/users/profile`,
   CHANGE_PASSWORD: `${API_URL}/users/change-password`,
   UPLOAD_AVATAR: `${API_URL}/users/avatar`,
+  SIGNUP_VOLUNTEER: `${API_URL}/users/me/volunteer`,
+  STATS_DONOR: `${API_URL}/stats/donor`,
+  STATS_FUNDRAISER: `${API_URL}/stats/fundraiser`,
 };
 
 export const FUNDRAISER_UPDATES_ENDPOINT = `${API_URL}/updates/fundraiser/me`;
 
 // Updates endpoints
 export const UPDATES_ENDPOINT = `${API_URL}/updates`;
-
+export const VOLUNTEER_UPDATES_ENDPOINT = `${API_URL}/updates/volunteer/me/ratings`;
+export const RATE_UPDATE_ENDPOINT = `${API_URL}/updates`;
+export const CHARITY_UPDATES_ENDPOINT = (charityId) => `${API_URL}/updates/charity/${charityId}`;

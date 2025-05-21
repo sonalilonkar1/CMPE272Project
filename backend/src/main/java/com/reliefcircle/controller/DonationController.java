@@ -4,8 +4,6 @@ import com.reliefcircle.dto.DonationDto;
 import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.model.User;
-import com.reliefcircle.dto.VerificationDto;
-import org.springframework.security.core.userdetails.UserDetails;
 import com.reliefcircle.service.CharityService;
 import com.reliefcircle.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
@@ -16,13 +14,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
 
 @Validated
 @Slf4j
@@ -79,11 +74,9 @@ public class DonationController {
      */
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<DonationDto> addDonation(
-            @Valid @RequestBody DonationDto request,
-            Authentication authentication) {
-        UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-
-        User donor = UserRepository.findByEmail(userDetails.getUsername())
+            @Valid @RequestBody DonationDto request) {
+        
+        User donor = UserRepository.findById(request.getDonorId())
             .orElseThrow(() -> new IllegalStateException("User not found"));
             
         request.setDonorId(donor.getId());
@@ -91,24 +84,4 @@ public class DonationController {
         return ResponseEntity.status(HttpStatus.CREATED).body(savedDonation);
     }
 
-    @PostMapping("/{verificationId}/verify")
-    public ResponseEntity<VerificationDto> submitVerification(
-            @PathVariable("verificationId") @Positive(message = "Verification ID must be positive") Long verificationId,
-            @RequestParam("comments") @NotBlank(message = "Comments are required") String comments,
-            @RequestParam("status") @NotBlank(message = "Status is required") String status,
-            Authentication authentication) {
-        
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof User user)) {
-            throw new IllegalArgumentException("Invalid authentication type");
-        }
-
-        // Check if user is a donor and volunteer, or a fundraiser
-        if ((user.getRole() != User.UserRole.DONOR || !user.getIsVolunteer()) && user.getRole() != User.UserRole.FUNDRAISER) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        VerificationDto verification = charityService.submitVerification(verificationId, comments, status);
-        return ResponseEntity.ok(verification);
-    }
 }

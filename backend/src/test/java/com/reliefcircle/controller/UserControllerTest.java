@@ -5,7 +5,7 @@ import com.reliefcircle.dto.PaginationRequest;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.service.UserService;
-import com.reliefcircle.service.JwtUserService;
+import com.reliefcircle.service.AWSService;
 import com.reliefcircle.service.CharityService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -14,17 +14,12 @@ import org.mockito.MockitoAnnotations;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
-import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -40,9 +35,6 @@ class UserControllerTest {
     private UserService userService;
 
     @Mock
-    private JwtUserService jwtUserService;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -51,15 +43,17 @@ class UserControllerTest {
     @Mock
     private Authentication authentication;
 
+    @Mock
+    private AWSService awsService;
+
     private MockMvc mockMvc;
     private ObjectMapper objectMapper;
     private User testUser;
-    private UserDetails userDetails;
 
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
-        UserController controller = new UserController(userService, jwtUserService, userRepository, charityService);
+        UserController controller = new UserController(userService, userRepository, charityService, awsService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
         objectMapper = new ObjectMapper();
 
@@ -69,12 +63,6 @@ class UserControllerTest {
                 .role(User.UserRole.FUNDRAISER)  // Set as FUNDRAISER to access endpoints
                 .build();
 
-        userDetails = new org.springframework.security.core.userdetails.User(
-                testUser.getEmail(),
-                "password",
-                Collections.singletonList(new SimpleGrantedAuthority("ROLE_FUNDRAISER"))
-        );
-
         when(authentication.getPrincipal()).thenReturn(testUser);
         when(authentication.isAuthenticated()).thenReturn(true);
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
@@ -83,7 +71,6 @@ class UserControllerTest {
     @Test
     void testGetAllUsers() throws Exception {
         // Arrange
-        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("email").ascending());
         Page<User> page = new PageImpl<>(Arrays.asList(testUser));
         when(userService.getAllUsers(any(PageRequest.class))).thenReturn(page);
 
@@ -133,7 +120,6 @@ class UserControllerTest {
     @Test
     void testGetDonorsAndVolunteers() throws Exception {
         // Arrange
-        PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("email").ascending());
         Page<User> page = new PageImpl<>(Arrays.asList(testUser));
         when(charityService.getDonorsWhoAreVolunteers(any(PageRequest.class))).thenReturn(page);
 

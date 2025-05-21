@@ -12,11 +12,11 @@ import org.springframework.validation.annotation.Validated;
 
 import com.reliefcircle.model.User;
 import com.reliefcircle.service.UserService;
-import com.reliefcircle.service.JwtUserService;
 import com.reliefcircle.service.CharityService;
+import com.reliefcircle.service.AWSService;
 import com.reliefcircle.repository.UserRepository;
 import com.reliefcircle.dto.PaginationRequest;
-import com.reliefcircle.dto.UpdateStripeIdRequest;
+import com.reliefcircle.dto.StripeIdRequest;
 import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.dto.UserDto;
 
@@ -37,17 +37,17 @@ import jakarta.validation.Valid;
 public class UserController {
     
     private final UserService UserService;
-    private final JwtUserService jwtUserService;
     private final UserRepository userRepository;
     private final CharityService charityService;
+    private final AWSService awsService;
     
     @Autowired
-    public UserController(UserService UserService, JwtUserService jwtUserService, 
-                         UserRepository userRepository, CharityService charityService) {
+    public UserController(UserService UserService,
+                         UserRepository userRepository, CharityService charityService, AWSService awsService) {
         this.UserService = UserService;
-        this.jwtUserService = jwtUserService;
         this.userRepository = userRepository;
         this.charityService = charityService;
+        this.awsService = awsService;
     }
     
     /**
@@ -141,6 +141,27 @@ public class UserController {
         }
     }
 
+    @PutMapping("/me/volunteer")
+    public ResponseEntity<UserDto> signUpAsVolunteer(
+            @RequestParam(value = "subscribeToEmail", required = false, defaultValue = "false") boolean subscribeToEmail,
+            Authentication authentication) {
+        User user = (User) authentication.getPrincipal();
+
+        if (!user.getRole().equals(User.UserRole.DONOR)) {
+            return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(null);
+        }
+
+        // Subscribe to email notifications if requested
+        if (subscribeToEmail) {
+            awsService.subscribeEmailToTopic(user.getEmail(), "updates");
+        }
+
+        UserDto updatedUser = UserDto.fromUser(UserService.updateVolunteerStatus(user.getId(), true));
+        return ResponseEntity.ok(updatedUser);
+    }
+
     /**
      * Get list of donors who are volunteers
      * @param paginationRequest Pagination parameters
@@ -188,7 +209,7 @@ public class UserController {
      */
     @PutMapping("/me/stripe-id")
     public ResponseEntity<String> updateStripeId(
-            @Valid @RequestBody UpdateStripeIdRequest request,
+            @Valid @RequestBody StripeIdRequest stripeRequest,
             Authentication authentication
     ) {
         // Get the logged-in user
@@ -204,7 +225,7 @@ public class UserController {
         }
 
         // Update the Stripe ID
-        user.setStripeId(request.getStripeId());
+        user.setStripeId(stripeRequest.getStripeId());
         userRepository.save(user);
 
         return ResponseEntity.ok("Stripe ID updated successfully");

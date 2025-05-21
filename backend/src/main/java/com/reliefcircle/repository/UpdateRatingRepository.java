@@ -66,4 +66,9 @@ public interface UpdateRatingRepository extends JpaRepository<UpdateRating, Long
            "GROUP BY r.update.id " +
            "ORDER BY avgRating DESC")
     Page<Object[]> findHighestRatedUpdates(Pageable pageable);
+
+    @Query("SELECT COUNT(ur) > 0 FROM UpdateRating ur " +
+           "WHERE ur.update.charity.id = :charityId AND ur.donor.id = :volunteerId")
+    boolean hasVolunteerRatedAnyUpdateForCharity(@Param("charityId") Long charityId, 
+                                                @Param("volunteerId") UUID volunteerId);
 }

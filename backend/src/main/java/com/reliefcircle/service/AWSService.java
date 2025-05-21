@@ -14,7 +14,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
-import com.reliefcircle.dto.CharityDto;
+import software.amazon.awssdk.services.sns.model.PublishResponse;
+
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -26,7 +27,8 @@ public class AWSService {
     private final S3Client s3Client;
     private final SnsClient snsClient;
     private final String primaryBucket;
-    private final String snsTopic;
+    private final String snsTopicCharity;
+    private final String snsTopicUpdates;
     private final String region;
 
     public AWSService(
@@ -34,10 +36,12 @@ public class AWSService {
             @Value("${aws.secretKey}") String awsSecret,
             @Value("${aws.region:us-east-2}") String region,
             @Value("${aws.s3.bucket-name}") String primaryBucket,
-            @Value("${sns.topic.arn}") String snsTopic
+            @Value("${sns.topic.arn.charity}") String snsTopicCharity,
+            @Value("${sns.topic.arn.updates}") String snsTopicUpdates
     ) {
         this.primaryBucket = primaryBucket;
-        this.snsTopic = snsTopic;
+        this.snsTopicCharity = snsTopicCharity;
+        this.snsTopicUpdates = snsTopicUpdates;
         this.region = region;
 
         AwsBasicCredentials credentials = AwsBasicCredentials.create(awsAccessKeyId, awsSecret);
@@ -80,20 +84,64 @@ public class AWSService {
         }
     }
 
-    public boolean pubMessageToFundraiser(CharityDto charityDto) {
+    /**
+     * Sends a notification to the specified recipient using SNS.
+     *
+     * @param subject   The subject of the notification.
+     * @param message   The message body of the notification.
+     * @param snsTopic  The SNS topic ARN to publish the message to.
+     */
+    public void sendNotification(String subject, String message, String topic) {
+        String snsTopic;
+        if(topic.equals("charity")) {
+            snsTopic = snsTopicCharity;
+        } else if(topic.equals("updates")) {
+            snsTopic = snsTopicUpdates;
+        } else {
+            throw new IllegalArgumentException("Invalid SNS topic specified");
+        }
         try {
             PublishRequest request = PublishRequest.builder()
-                    .message("Charity Info: " + charityDto.toString())
                     .topicArn(snsTopic)
-                    .subject("Charity Registration: " + charityDto.getName())
+                    .subject(subject)
+                    .message(message)
                     .build();
-
-            var result = snsClient.publish(request);
-            log.info("SNS Message sent. Message ID: {}", result.messageId());
-            return true;
-        } catch (Exception e) {
+            PublishResponse result = snsClient.publish(request);
+            log.info("SNS Email sent for {}. Message ID: {}", topic ,result.messageId());
+        } catch (Exception e) { 
             log.error("SNS Publish failed: {}", e.getMessage(), e);
-            return false;
         }
     }
+
+    /**
+     * Subscribes a user's email to a specific SNS topic.
+     *
+     * @param userEmail The email address of the user to subscribe.
+     * @param topic     The SNS topic to subscribe the user to.
+     */
+    public void subscribeEmailToTopic(String userEmail, String topic) {
+        String snsTopic;
+        if(topic.equals("charity")) {
+            snsTopic = snsTopicCharity;
+        } else if(topic.equals("updates")) {
+            snsTopic = snsTopicUpdates;
+        } else {
+            throw new IllegalArgumentException("Invalid SNS topic specified");
+        }
+
+        try {
+            var subscribeRequest = software.amazon.awssdk.services.sns.model.SubscribeRequest.builder()
+                    .topicArn(snsTopic)
+                    .protocol("email")
+                    .endpoint(userEmail)
+                    .build();
+
+            var response = snsClient.subscribe(subscribeRequest);
+            log.info("Subscription request sent to {}. Subscription ARN: {}", userEmail, response.subscriptionArn());
+        } catch (Exception e) {
+            log.error("Failed to subscribe email to SNS topic: {}", e.getMessage(), e);
+            throw new RuntimeException("SNS subscription failed", e);
+        }
+    }
+
 }

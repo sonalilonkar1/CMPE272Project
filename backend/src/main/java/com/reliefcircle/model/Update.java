@@ -6,14 +6,14 @@ import lombok.*;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "updates")
+@Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Getter
-@Setter
 @ToString(exclude = {"charity", "ratings"})
 public class Update {
     @Id
@@ -53,6 +53,10 @@ public class Update {
     @Builder.Default
     private Integer ratingCount = 0;
 
+    @Column(name = "is_approved")
+    @Builder.Default
+    private Boolean isApproved = false;
+
     @PrePersist
     protected void onCreate() {
         createdAt = LocalDateTime.now();
@@ -74,13 +78,23 @@ public class Update {
             return;
         }
 
-        double sum = 0;
-        for (UpdateRating rating : ratings) {
-            sum += rating.getRating();
+        // Only consider ratings greater than 0
+        List<UpdateRating> validRatings = ratings.stream()
+            .filter(r -> r.getRating() > 0)
+            .collect(Collectors.toList());
+
+        if (validRatings.isEmpty()) {
+            this.averageRating = 0.0;
+            this.ratingCount = 0;
+            return;
         }
-        
-        this.averageRating = sum / ratings.size();
-        this.ratingCount = ratings.size();
+
+        double sum = validRatings.stream()
+            .mapToInt(UpdateRating::getRating)
+            .sum();
+
+        this.ratingCount = validRatings.size();
+        this.averageRating = sum / this.ratingCount;
     }
 
     /**

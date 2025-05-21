@@ -1,20 +1,20 @@
 package com.reliefcircle.service;
 
 import com.reliefcircle.dto.CharityDto;
-import com.reliefcircle.exception.CharityException;
 import com.reliefcircle.model.Charity;
 import com.reliefcircle.model.User;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
 import com.reliefcircle.repository.UserRepository;
-import com.reliefcircle.repository.VerificationRepository;
-import com.reliefcircle.config.PayPalConfig;
-import com.reliefcircle.service.AWSService;
+import com.reliefcircle.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -25,14 +25,18 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
+@ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 class CharityServiceTest {
 
     @Mock
@@ -45,13 +49,7 @@ class CharityServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private VerificationRepository verificationRepository;
-
-    @Mock
     private AWSService awsService;
-
-    @Mock
-    private PayPalConfig payPalConfig;
 
     @InjectMocks
     private CharityService charityService;
@@ -61,10 +59,12 @@ class CharityServiceTest {
     private User testUser;
     private Charity testCharity;
 
+    private User mockFundraiser;
+    private Charity mockCharity;
+    private CharityDto mockCharityDto;
+
     @BeforeEach
     void setUp() {
-        MockitoAnnotations.openMocks(this);
-        
         testFundraiser = User.builder()
                 .id(UUID.randomUUID())
                 .email("fundraiser@example.com")
@@ -72,6 +72,7 @@ class CharityServiceTest {
                 .build();
 
         testCharityDto = CharityDto.builder()
+                .id(1L)
                 .name("Test Charity")
                 .description("Test Description")
                 .organizationName("Test Org")
@@ -96,21 +97,44 @@ class CharityServiceTest {
                 .fundraiser(testUser)
                 .build();
 
+        mockFundraiser = User.builder()
+                .id(UUID.randomUUID())
+                .email("fundraiser@example.com")
+                .role(User.UserRole.FUNDRAISER) // Set role to FUNDRAISER
+                .build();
+
+        mockCharity = Charity.builder()
+                .id(1L)
+                .name("Test Charity")
+                .description("Test Description")
+                .targetAmount(BigDecimal.valueOf(10000))
+                .fundraiser(mockFundraiser)
+                .build();
+
+        mockCharityDto = CharityDto.builder()
+                .name("Test Charity")
+                .description("Test Description")
+                .targetAmount(BigDecimal.valueOf(10000))
+                .fundraiserId(mockFundraiser.getId())
+                .build();
+
+        // Mock userRepository for both testFundraiser and mockFundraiser
         when(userRepository.findByEmail(anyString())).thenReturn(Optional.of(testUser));
-        when(userRepository.findById(any(UUID.class))).thenReturn(Optional.of(testFundraiser));
+        when(userRepository.findById(eq(testFundraiser.getId()))).thenReturn(Optional.of(testFundraiser));
+        when(userRepository.findById(eq(mockFundraiser.getId()))).thenReturn(Optional.of(mockFundraiser));
     }
 
     @Test
     void testRegisterCharity_Success() {
         // Arrange
         MockMultipartFile file = new MockMultipartFile(
-            "file", 
-            "test.jpg",
-            MediaType.IMAGE_JPEG_VALUE, 
-            "test image content".getBytes()
+                "file",
+                "test.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "test image content".getBytes()
         );
         testCharityDto.setFile(file);
-        
+
         when(charityRepository.save(any(Charity.class))).thenReturn(testCharity);
         when(awsService.uploadProofDocument(any(MultipartFile.class), anyString())).thenReturn("https://test-bucket.s3.amazonaws.com/test.jpg");
 
@@ -128,7 +152,7 @@ class CharityServiceTest {
         // Arrange
         PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("name").ascending());
         Page<Charity> page = new PageImpl<>(Arrays.asList(testCharity));
-        when(charityRepository.findAll(any(PageRequest.class))).thenReturn(page);
+        when(charityRepository.findAll(eq(pageRequest))).thenReturn(page);
 
         // Act
         Page<CharityDto> result = charityService.getAllCharities(pageRequest);
@@ -144,7 +168,7 @@ class CharityServiceTest {
         // Arrange
         PageRequest pageRequest = PageRequest.of(0, 10, Sort.by("name").ascending());
         Page<Charity> page = new PageImpl<>(Arrays.asList(testCharity));
-        when(charityRepository.findByIsVerified(eq(true), any(PageRequest.class))).thenReturn(page);
+        when(charityRepository.findByIsVerified(eq(true), eq(pageRequest))).thenReturn(page);
 
         // Act
         Page<CharityDto> result = charityService.getVerifiedCharities(pageRequest);
@@ -158,7 +182,7 @@ class CharityServiceTest {
     @Test
     void testGetCharityById() {
         // Arrange
-        when(charityRepository.findById(anyLong())).thenReturn(Optional.of(testCharity));
+        when(charityRepository.findById(eq(1L))).thenReturn(Optional.of(testCharity));
 
         // Act
         CharityDto result = charityService.getCharityById(1L);
@@ -172,14 +196,14 @@ class CharityServiceTest {
     void testUpdateCharity() {
         // Arrange
         MockMultipartFile file = new MockMultipartFile(
-            "file", 
-            "test.jpg",
-            MediaType.IMAGE_JPEG_VALUE, 
-            "test image content".getBytes()
+                "file",
+                "test.jpg",
+                MediaType.IMAGE_JPEG_VALUE,
+                "test image content".getBytes()
         );
         testCharityDto.setFile(file);
-        
-        when(charityRepository.findById(anyLong())).thenReturn(Optional.of(testCharity));
+
+        when(charityRepository.findById(eq(1L))).thenReturn(Optional.of(testCharity));
         when(charityRepository.save(any(Charity.class))).thenReturn(testCharity);
         when(awsService.uploadProofDocument(any(MultipartFile.class), anyString())).thenReturn("https://test-bucket.s3.amazonaws.com/test.jpg");
 
@@ -191,4 +215,76 @@ class CharityServiceTest {
         assertEquals(testCharityDto.getName(), result.getName());
         verify(charityRepository).save(any(Charity.class));
     }
-} 
+
+    @Test
+    void registerCharity_ShouldSaveAndReturnCharity() {
+        // Arrange
+        when(charityRepository.save(any(Charity.class))).thenReturn(mockCharity);
+
+        // Act
+        CharityDto result = charityService.registerCharity(mockCharityDto);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo(mockCharityDto.getName());
+        verify(charityRepository).save(any(Charity.class));
+    }
+
+    @Test
+    void getCharityById_ShouldReturnCharity() {
+        // Arrange
+        when(charityRepository.findById(eq(1L))).thenReturn(Optional.of(mockCharity));
+
+        // Act
+        CharityDto result = charityService.getCharityById(1L);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo(mockCharity.getName());
+    }
+
+    @Test
+    void getCharitiesByFundraiser_ShouldReturnPageOfCharities() {
+        // Arrange
+        PageRequest pageRequest = PageRequest.of(0, 10);
+        Page<Charity> charityPage = new PageImpl<>(List.of(mockCharity));
+        when(charityRepository.findByFundraiserId(eq(mockFundraiser.getId()), eq(pageRequest)))
+                .thenReturn(charityPage);
+
+        // Act
+        Page<CharityDto> result = charityService.getCharitiesByFundraiser(
+                mockFundraiser.getId(),
+                pageRequest
+        );
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).getName()).isEqualTo(mockCharity.getName());
+    }
+
+    @Test
+    void getCharityById_ShouldReturnCharityDto() {
+        // Arrange
+        when(charityRepository.findById(eq(1L))).thenReturn(Optional.of(testCharity));
+
+        // Act
+        CharityDto result = charityService.getCharityById(1L);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getName()).isEqualTo(testCharity.getName());
+    }
+
+    @Test
+    void getCharityById_ShouldThrowException_WhenNotFound() {
+        // Arrange
+        when(charityRepository.findById(eq(99L))).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThrows(
+                ResourceNotFoundException.class,
+                () -> charityService.getCharityById(99L)
+        );
+    }
+}

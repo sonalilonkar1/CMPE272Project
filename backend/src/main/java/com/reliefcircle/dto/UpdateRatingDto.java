@@ -22,7 +22,6 @@ public class UpdateRatingDto {
     private String comment;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private String fileUrl;
     
-    // Optional fields to indicate whether the current user is the author of this rating
-    private boolean isCurrentUserRating;
 }

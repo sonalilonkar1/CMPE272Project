@@ -17,16 +17,32 @@ import java.util.*;
 @RequiredArgsConstructor
 @Slf4j
 public class UserService {
-    private final UserRepository UserRepository;
+    private final UserRepository userRepository;
 
     public Page<User> getAllUsers(Pageable pageable) {
-        return UserRepository.findAll(pageable);
+        return userRepository.findAll(pageable);
     }
 
     public User getUserById(UUID UserId) {
-        return UserRepository.findById(UserId)
+        return userRepository.findById(UserId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         String.format("User profile not found with ID: %s", UserId)));
+    }
+
+    public User updateVolunteerStatus(UUID userId, boolean isVolunteer) {
+        User user = userRepository.findById(userId)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        if (!user.getRole().equals(User.UserRole.DONOR)) {
+            throw new IllegalStateException("Only donors can become volunteers");
+        }
+
+        user.setIsVolunteer(isVolunteer);
+        User savedUser = userRepository.save(user);
+        
+        log.info("Updated volunteer status for user {}: {}", userId, isVolunteer);
+        
+        return savedUser;
     }
     
     

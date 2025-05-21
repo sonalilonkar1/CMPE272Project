@@ -69,3 +69,5 @@ export const SUCCESS_MESSAGES = {
   PROFILE_UPDATED: 'Profile updated successfully!',
   SETTINGS_UPDATED: 'Settings updated successfully!'
 } 
+
+export const FALLBACK_STRIPE_ACCOUNT = 'acct_1RO0YyReABzSigiM'

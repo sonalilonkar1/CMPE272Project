@@ -2,7 +2,6 @@ package com.reliefcircle.service;
 
 import com.reliefcircle.dto.UpdateDto;
 import com.reliefcircle.dto.UpdateRatingDto;
-import com.reliefcircle.dto.PaginatedResponse;
 import com.reliefcircle.exception.ResourceNotFoundException;
 import com.reliefcircle.model.Charity;
 import com.reliefcircle.model.Update;
@@ -15,7 +14,6 @@ import com.reliefcircle.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -27,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -38,7 +37,6 @@ public class UpdateService {
     private final UserRepository userRepository;
     private final CharityRepository charityRepository;
     private final AWSService awsService;
-    private final NotificationService notificationService;
 
 
     /**
@@ -139,52 +137,6 @@ public class UpdateService {
     }
     
     /**
-     * Get updates for charities that have been verified by a volunteer
-     */
-    @Transactional(readOnly = true)
-    public Page<UpdateDto> getUpdatesByVolunteer(UUID volunteerId, Pageable pageable) {
-        // Verify volunteer exists
-        User volunteer = userRepository.findById(volunteerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Volunteer not found with ID: " + volunteerId));
-        
-        if (!volunteer.getIsVolunteer()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not a volunteer");
-        }
-        
-        Page<Update> updates = updateRepository.findByVolunteerIdOrderByCreatedAtDesc(volunteerId, pageable);
-        return updates.map(this::convertToDto);
-    }
-    
-    /**
-     * Update an existing update
-     */
-    @Transactional
-    public UpdateDto updateUpdate(Long id, UpdateDto updateDto, UUID userId) {
-        Update update = updateRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Update not found with ID: " + id));
-        
-        // Check if the current user is the fundraiser who created this update
-        if (!update.getFundraiser().getId().equals(userId)) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Only the original fundraiser can update this update");
-        }
-        
-        // Update text content
-        if (updateDto.getText() != null) {
-            update.setText(updateDto.getText());
-        }
-        
-        // Handle file upload if a new file is provided
-        if (updateDto.getFile() != null && !updateDto.getFile().isEmpty()) {
-            String folder = "charity-updates/" + update.getCharity().getId();
-            String fileUrl = awsService.uploadProofDocument(updateDto.getFile(), folder);
-            update.setFileUrl(fileUrl);
-        }
-        
-        Update updatedUpdate = updateRepository.save(update);
-        return convertToDto(updatedUpdate);
-    }
-    
-    /**
      * Delete an update
      */
     @Transactional
@@ -232,6 +184,9 @@ public class UpdateService {
             update.recalculateAverageRating();
             updateRepository.save(update);
             
+            // Check if charity should be approved
+            checkAndUpdateApprovalStatus(updateId);
+            
             return convertToDto(savedRating);
         } else {
             // Create new rating
@@ -248,8 +203,38 @@ public class UpdateService {
             update.addRating(savedRating);
             updateRepository.save(update);
             
+            // Check if charity should be approved
+            checkAndUpdateApprovalStatus(updateId);
+            
             return convertToDto(savedRating);
         }
+    }
+    
+    /**
+     * Update a rating
+     */
+    @Transactional
+    public UpdateRatingDto updateRating(Long ratingId, UpdateRatingDto ratingDto, UUID donorId) {
+        // Find existing rating by ID
+        UpdateRating rating = updateRatingRepository.findById(ratingId)
+            .orElseThrow(() -> new ResourceNotFoundException(
+                "Rating not found with ID: " + ratingId));
+
+        // Verify the donor owns this rating
+        if (!rating.getDonor().getId().equals(donorId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, 
+                "Only the original donor can update this rating");
+        }
+
+        // Create rating DTO with update ID
+        UpdateRatingDto updateRequest = UpdateRatingDto.builder()
+            .updateId(rating.getUpdate().getId())
+            .rating(ratingDto.getRating())
+            .comment(ratingDto.getComment())
+            .build();
+
+        // Use existing rateUpdate method
+        return rateUpdate(rating.getUpdate().getId(), updateRequest, donorId);
     }
     
     /**
@@ -300,7 +285,7 @@ public class UpdateService {
     }
     
     // Convert entities to DTOs
-    private UpdateDto convertToDto(Update update) {
+    public UpdateDto convertToDto(Update update) {
         List<UpdateRatingDto> ratingDtos = update.getRatings().stream()
                 .map(this::convertToDto)
                 .collect(Collectors.toList());
@@ -333,47 +318,54 @@ public class UpdateService {
                 .comment(rating.getComment())
                 .createdAt(rating.getCreatedAt())
                 .updatedAt(rating.getUpdatedAt())
+                .fileUrl(rating.getFileUrl())
                 .build();
+                
     }
     
     /**
-     * Convert UpdateDto with user rating
-     */
-    private UpdateDto convertToDtoWithUserRating(Update update, UUID userId) {
-        UpdateDto dto = convertToDto(update);
-        
-        // Add user's rating if available
-        if (userId != null) {
-            Optional<UpdateRating> userRating = update.getRatings().stream()
-                    .filter(r -> r.getDonor().getId().equals(userId))
-                    .findFirst();
-            
-            userRating.ifPresent(rating -> {
-                UpdateRatingDto ratingDto = convertToDto(rating);
-                ratingDto.setCurrentUserRating(true);
-                dto.setUserRating(ratingDto);
-            });
-        }
-        
-        return dto;
-    }
-
-    /**
      * Send notification to volunteer about a new update
-     * @param volunteer
-     * @param update
+     * @param volunteer The volunteer to notify
+     * @param update The update details
      */
-    public void sendNotificationToVolunteer(User volunteer, UpdateDto update) {
-        String message = String.format(
-            "Hello %s, a new update has been posted for your action. '%s': %s",
-            volunteer.getFullName(),
-            update.getCharityId(),
+    @Transactional
+    public void sendNotificationToVolunteer(UpdateDto update) {
+        // Build notification message
+        StringBuilder messageBuilder = new StringBuilder();
+        messageBuilder.append(String.format(
+            "Hello,\n\nA new update has been posted for your first review of this charity.\n\n"));
+        
+        messageBuilder.append(String.format(
+            "Charity: %s\n\n",
+            update.getCharityName()
+        ));
+        
+        messageBuilder.append(String.format(
+            "Update Details:\n%s\n\n",
             update.getText()
+        ));
+
+        // Add file information if available
+        if (update.getFileUrl() != null && !update.getFileUrl().isEmpty()) {
+            messageBuilder.append("\nSupporting Documents:\n");
+            messageBuilder.append(String.format("File: %s\n", update.getFileUrl()));
+        }
+
+        messageBuilder.append(
+            "Please review and rate this update at your earliest convenience.\n\n" +
+            "Best regards,\nReliefCircle Team"
         );
 
         // Use the NotificationService to send the notification
-        notificationService.sendNotification(volunteer.getEmail(), "New Charity Update", message);
+        awsService.sendNotification(
+            String.format("New Update for Charity: %s", update.getCharityName()),
+            messageBuilder.toString(),
+            "updates"
+        );
+        
+        log.info("Sent first update notification to volunteers for charity {}", update.getCharityName());
     }
+
 
     /**
      * Get update ratings for a volunteer
@@ -388,5 +380,55 @@ public class UpdateService {
 
         // Convert to DTO
         return ratings.map(this::convertToDto);
+    }
+
+    /**
+     * Get updates for a specific charity
+     * @param charityId The charity ID
+     * @param pageable Pagination information
+     * @return Page of updates for the charity
+     */
+    @Transactional(readOnly = true)
+    public Page<UpdateDto> getUpdatesByCharity(Long charityId, Pageable pageable) {
+        log.debug("Fetching updates for charity ID: {}", charityId);
+        
+        // Verify charity exists
+        charityRepository.findById(charityId)
+                .orElseThrow(() -> new ResourceNotFoundException("Charity not found with ID: " + charityId));
+
+        return updateRepository.findByCharityId(charityId, pageable)
+                .map(this::convertToDto);
+    }
+
+    @Transactional
+    public void checkAndUpdateApprovalStatus(Long updateId) {
+        Update update = updateRepository.findById(updateId)
+            .orElseThrow(() -> new ResourceNotFoundException("Update not found with ID: " + updateId));
+            
+        // Get the associated charity
+        Charity charity = update.getCharity();
+        
+        // If charity is already verified, no need to check again
+        if (charity.getIsVerified()) {
+            log.debug("Charity {} is already verified, skipping verification check", charity.getId());
+            return;
+        }
+        
+        UpdateDto updateDto = convertToDto(update);
+        
+        // Get total number of volunteers from ratings list
+        long totalVolunteers = updateDto.getRatings() != null ? updateDto.getRatings().size() : 0;
+        
+        // Get total ratings and average rating from DTO
+        int totalRatings = updateDto.getRatingCount();
+        Double averageRating = updateDto.getAverageRating();
+        
+        // Check if all volunteers have rated and average rating is 7 or more
+        if (totalRatings >= totalVolunteers && averageRating != null && averageRating >= 7.0) {
+            charity.setIsVerified(true);
+            charityRepository.save(charity);
+            log.info("Charity {} has been verified based on update {} with average rating {}. Total volunteers: {}", 
+                charity.getId(), updateId, averageRating, totalVolunteers);
+        }
     }
 }

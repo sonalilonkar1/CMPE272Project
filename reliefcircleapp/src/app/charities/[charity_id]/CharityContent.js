@@ -1,6 +1,9 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import DonationModal from '@/components/DonationModal'
+import { loadStripe } from '@stripe/stripe-js'
+import { useDispatch, useSelector } from 'react-redux'
+import { fetchCharityUpdates } from '@/redux/features/charitiesSlice'
 
 // Skeleton loader component
 export const CharityDetailSkeleton = () => (
@@ -98,15 +101,26 @@ export default function CharityContent({ initialData }) {
   const [isProcessing, setIsProcessing] = useState(false)
   const [isDonationModalOpen, setIsDonationModalOpen] = useState(false)
   const [selectedCharity, setSelectedCharity] = useState(null)
+  const dispatch = useDispatch()
+  const { profile } = useSelector(state => state.user)
+
+  useEffect(() => {
+    if (initialData.id) {
+      dispatch(fetchCharityUpdates({ charityId: initialData.id, token: profile?.token }))
+    }
+  }, [dispatch, initialData.id, profile?.token])
 
   const handleDonation = async (e) => {
     e.preventDefault()
     setIsProcessing(true)
     try {
-      // Here you would integrate with your payment processor (e.g., Stripe)
-      // For now, we'll just simulate a successful donation
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      // You would typically show a success message here
+      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
+      const { error } = await stripe.redirectToCheckout({
+        sessionId: data.sessionId, // This must be a Checkout Session ID (starts with cs_)
+      })
+      if (error) {
+        console.error('Stripe checkout error:', error)
+      }
     } catch (error) {
       console.error('Donation failed:', error)
     } finally {
@@ -248,6 +262,7 @@ export default function CharityContent({ initialData }) {
           isOpen={isDonationModalOpen}
           onClose={handleCloseDonationModal}
           charity={selectedCharity}
+          initialAmount={donationAmount}
         />
       )}
     </main>
