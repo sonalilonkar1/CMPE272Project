@@ -2,11 +2,13 @@
 
 import { useState, useEffect } from 'react'
 import { showToast } from './Toast'
+import { FALLBACK_STRIPE_ACCOUNT } from '@/utils/constants'
+import { useSelector } from 'react-redux'
 
 export default function DonationModal({ isOpen, onClose, charity, initialAmount }) {
   const [amount, setAmount] = useState(initialAmount || '')
   const [loading, setLoading] = useState(false)
-
+  const { profile } = useSelector((state) => state.user)
   useEffect(() => {
     if (isOpen) {
       setAmount(initialAmount || '')
@@ -18,39 +20,45 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
     setLoading(true)
 
     try {
-      // Create a test payment intent
-      const response = await fetch('/api/create-payment-intent', {
+      const ourresponse = await fetch(`${process.env.NEXT_PUBLIC_API_BASE_URL}/donations`, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-        },
+            'Content-Type': 'application/json',
+          },
         body: JSON.stringify({
-          amount: parseFloat(amount) * 100, // Convert to cents
+          stripeOrderId: charity.fundraiserStripeId+profile?.id,
           charityId: charity.id,
-          charityName: charity.name,
-          // TODO: Replace with dynamic Stripe account from charity detail API
-          stripeAccount: 'acct_1RNMOzRgqpLqbT8e',
+          amount: parseFloat(amount),
+          donorId: profile?.id,
         }),
-      })
+      });
+      const ourdata = await ourresponse.json();
+      console.log("webhook data" ,ourdata);
+      // Create a test payment intent
+      // const response = await fetch('/api/create-payment-intent', {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({
+      //     amount: parseFloat(amount) * 100, // Convert to cents
+      //     charityId: charity.id,
+      //     charityName: charity.name,
+      //     stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId : FALLBACK_STRIPE_ACCOUNT,
+      //     donorId: profile?.id,
+      //   }),
+      // })
 
       const data = await response.json()
 
       if (!response.ok) {
         throw new Error(data.message || 'Failed to create payment')
       }
+      window.location = data.url
+      // Record the donation in your backend
 
-      // Load Stripe
-      const { loadStripe } = await import('@stripe/stripe-js')
-      const stripe = await loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY)
-
-      // Redirect to Stripe Checkout
-      const { error } = await stripe.redirectToCheckout({
-        sessionId: data.sessionId,
-      })
-
-      if (error) {
-        throw new Error(error.message)
-      }
+      
+    
     } catch (error) {
       console.error('Payment error:', error)
       showToast.error(error.message || 'Failed to process payment')

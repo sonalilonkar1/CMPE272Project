@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { showToast } from '@/components/Toast';
-import { FUNDRAISER_UPDATES_ENDPOINT, UPDATES_ENDPOINT, VOLUNTEER_UPDATES_ENDPOINT } from '@/utils/api';
+import { FUNDRAISER_UPDATES_ENDPOINT, UPDATES_ENDPOINT, VOLUNTEER_UPDATES_ENDPOINT, RATE_UPDATE_ENDPOINT, CHARITY_UPDATES_ENDPOINT } from '@/utils/api';
 
 // Async thunk for fetching fundraiser updates with pagination
 export const fetchFundraiserUpdates = createAsyncThunk(
@@ -80,6 +80,52 @@ export const fetchVolunteerUpdates = createAsyncThunk(
   }
 );
 
+// Thunk for rating an update
+export const rateUpdate = createAsyncThunk(
+  'updates/rateUpdate',
+  async ({ updateId, rating, token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.put(
+        `${RATE_UPDATE_ENDPOINT}/${updateId}/rate?rating=${rating}`,
+        {},
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      showToast.success('Thank you for your rating!');
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to submit rating';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
+// Async thunk for fetching updates for a specific charity
+export const fetchCharityUpdates = createAsyncThunk(
+  'updates/fetchCharityUpdates',
+  async ({ charityId, token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        CHARITY_UPDATES_ENDPOINT(charityId),
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      const errorMessage = error.response?.data?.message || 'Failed to fetch charity updates';
+      showToast.error(errorMessage);
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
+
 const initialState = {
   updates: [],
   volunteerUpdates: [],
@@ -88,7 +134,10 @@ const initialState = {
   totalElements: 0,
   pageSize: 10,
   status: 'idle',
-  error: null
+  error: null,
+  charityUpdates: [],
+  charityUpdatesLoading: false,
+  charityUpdatesError: null
 };
 
 const updatesSlice = createSlice({
@@ -137,13 +186,37 @@ const updatesSlice = createSlice({
       })
       .addCase(fetchVolunteerUpdates.fulfilled, (state, action) => {
         state.status = 'succeeded';
-        state.volunteerUpdates = action.payload;
+        state.volunteerUpdates = action.payload.content || [];
         state.error = null;
       })
       .addCase(fetchVolunteerUpdates.rejected, (state, action) => {
         state.status = 'failed';
         state.error = action.payload;
         state.volunteerUpdates = [];
+      })
+      .addCase(rateUpdate.pending, (state) => {
+        state.status = 'loading';
+        state.error = null;
+      })
+      .addCase(rateUpdate.fulfilled, (state) => {
+        state.status = 'succeeded';
+        state.error = null;
+      })
+      .addCase(rateUpdate.rejected, (state, action) => {
+        state.status = 'failed';
+        state.error = action.payload;
+      })
+      .addCase(fetchCharityUpdates.pending, (state) => {
+        state.charityUpdatesLoading = true;
+        state.charityUpdatesError = null;
+      })
+      .addCase(fetchCharityUpdates.fulfilled, (state, action) => {
+        state.charityUpdatesLoading = false;
+        state.charityUpdates = action.payload;
+      })
+      .addCase(fetchCharityUpdates.rejected, (state, action) => {
+        state.charityUpdatesLoading = false;
+        state.charityUpdatesError = action.payload;
       });
   }
 });

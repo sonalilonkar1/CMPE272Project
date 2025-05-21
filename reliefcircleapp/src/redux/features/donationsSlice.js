@@ -5,14 +5,13 @@ import axios from '@/lib/axios';
 export const fetchDonorDonations = createAsyncThunk(
   'donations/fetchDonorDonations',
   async ({ donorId, token }, { rejectWithValue }) => {
-    console.log("donorId, token", donorId, token)
     try {
-      const response = await axios.get(`/donations?donorId=${donorId}`, {
+      const response = await axios.get(`/donations?donorId=${donorId}&sortBy=createdAt&sortDirection=desc`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }
       });
-      return Array.isArray(response.data) ? response.data : [];
+      return Array.isArray(response.data?.content) ? response?.data?.content : [];
     } catch (error) {
       let errorMsg = 'Failed to fetch donations';
       if (error.response?.data) {
