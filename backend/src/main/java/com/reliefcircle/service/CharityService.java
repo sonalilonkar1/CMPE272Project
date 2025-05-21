@@ -17,8 +17,6 @@ import com.reliefcircle.dto.DonationDto;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
 import com.reliefcircle.repository.UserRepository;
-import com.reliefcircle.repository.VerificationRepository;
-import com.reliefcircle.dto.VerificationDto;
 import com.reliefcircle.model.*;
 import lombok.extern.slf4j.Slf4j;
 import java.math.BigDecimal;
@@ -32,19 +30,16 @@ public class CharityService {
     private final CharityRepository charityRepository;
     private final DonationRepository donationRepository;
     private final UserRepository userRepository;
-    private final VerificationRepository verificationRepository;
     private final AWSService awsService;
 
     @Autowired
     public CharityService(CharityRepository charityRepository,
                           DonationRepository donationRepository,
                           UserRepository userRepository,
-                          VerificationRepository verificationRepository,
                           AWSService awsService) {
         this.charityRepository = charityRepository;
         this.donationRepository = donationRepository;
         this.userRepository = userRepository;
-        this.verificationRepository = verificationRepository;
         this.awsService = awsService;
     }
 
@@ -255,36 +250,6 @@ public class CharityService {
                 .status(savedDonation.getStatus())
                 .createdAt(savedDonation.getCreatedAt())
                 .build();
-    }
-
-    @Transactional
-    public VerificationDto submitVerification(Long verificationId, String comments, String status) {
-        Verification verification = verificationRepository.findById(verificationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Verification not found with ID: " + verificationId));
-
-        Verification.VerificationStatus newStatus = Verification.VerificationStatus.valueOf(status.toUpperCase());
-        verification.setStatus(newStatus);
-        verification.setComment(comments);
-        verification.setReviewedAt(LocalDateTime.now());
-
-        Verification updated = verificationRepository.save(verification);
-        return convertVerification(updated);
-    }
-
-    private VerificationDto convertVerification(Verification verification) {
-        return VerificationDto.builder()
-            .id(verification.getId())
-            .volunteerId(verification.getVolunteer().getId())
-            .volunteerName(verification.getVolunteer().getFullName())
-            .volunteerEmail(verification.getVolunteer().getEmail())
-            .charityId(verification.getCharity().getId())
-            .charityName(verification.getCharity().getName())
-            .proofId(verification.getProof() != null ? verification.getProof().getId() : null)
-            .proofDescription(verification.getProof() != null ? verification.getProof().getDescription() : null)
-            .status(verification.getStatus().name())
-            .comment(verification.getComment())
-            .reviewedAt(verification.getReviewedAt())
-            .build();
     }
 
     @Transactional

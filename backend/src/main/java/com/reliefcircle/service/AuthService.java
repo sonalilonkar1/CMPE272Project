@@ -15,7 +15,6 @@ import com.google.api.client.http.javanet.NetHttpTransport;
 import com.google.api.client.json.gson.GsonFactory;
 import org.springframework.beans.factory.annotation.Value;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Service
 @RequiredArgsConstructor
@@ -28,9 +27,6 @@ public class AuthService {
 
     @Value("${spring.security.oauth2.client.registration.google.client-id}")
     private String googleClientId;
-
-    // Store for blacklisted tokens
-    private final Set<String> tokenBlacklist = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
     public AuthResponse register(RegisterRequest request) {
         var user = User.builder()
@@ -97,46 +93,4 @@ public class AuthService {
         }
     }
 
-    /**
-     * Add a token to the blacklist
-     * @param token The token to blacklist
-     */
-    public void invalidateToken(String token) {
-        tokenBlacklist.add(token);
-    }
-
-    /**
-     * Check if a token is blacklisted or invalid
-     * @param token The token to check
-     * @return true if the token is blacklisted or invalid
-     */
-    public boolean isTokenInvalid(String token) {
-        if (tokenBlacklist.contains(token)) {
-            return true;
-        }
-        
-        try {
-            String email = jwtService.extractUsername(token);
-            User user = userRepository.findByEmail(email).orElse(null);
-            return user == null || !jwtService.isTokenValid(token, user);
-        } catch (Exception e) {
-            return true;
-        }
-    }
-
-    /**
-     * Clean up blacklisted tokens that are no longer valid
-     * This should be called periodically
-     */
-    public void cleanupBlacklist() {
-        tokenBlacklist.removeIf(token -> {
-            try {
-                String email = jwtService.extractUsername(token);
-                User user = userRepository.findByEmail(email).orElse(null);
-                return user == null || !jwtService.isTokenValid(token, user);
-            } catch (Exception e) {
-                return true;
-            }
-        });
-    }
 } 

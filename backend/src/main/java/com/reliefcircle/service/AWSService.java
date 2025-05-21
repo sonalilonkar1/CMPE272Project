@@ -16,7 +16,6 @@ import software.amazon.awssdk.services.sns.SnsClient;
 import software.amazon.awssdk.services.sns.model.PublishRequest;
 import software.amazon.awssdk.services.sns.model.PublishResponse;
 
-import com.reliefcircle.dto.CharityDto;
 
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;

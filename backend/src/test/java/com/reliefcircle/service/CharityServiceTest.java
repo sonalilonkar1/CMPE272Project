@@ -6,9 +6,7 @@ import com.reliefcircle.model.User;
 import com.reliefcircle.repository.CharityRepository;
 import com.reliefcircle.repository.DonationRepository;
 import com.reliefcircle.repository.UserRepository;
-import com.reliefcircle.repository.VerificationRepository;
 import com.reliefcircle.exception.ResourceNotFoundException;
-import com.reliefcircle.config.PayPalConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -51,13 +49,7 @@ class CharityServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private VerificationRepository verificationRepository;
-
-    @Mock
     private AWSService awsService;
-
-    @Mock
-    private PayPalConfig payPalConfig;
 
     @InjectMocks
     private CharityService charityService;

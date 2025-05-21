@@ -31,14 +31,6 @@ public interface UpdateRepository extends JpaRepository<Update, Long> {
     Page<Update> findByDonorIdOrderByCreatedAtDesc(@Param("donorId") UUID donorId, Pageable pageable);
     
     /**
-     * Find all updates for charities verified by a volunteer
-     */
-    @Query("SELECT DISTINCT u FROM Update u JOIN u.charity c " +
-           "WHERE c.isVerified = true AND EXISTS (SELECT v FROM Verification v WHERE v.charity = c AND v.volunteer.id = :volunteerId) " +
-           "ORDER BY u.createdAt DESC")
-    Page<Update> findByVolunteerIdOrderByCreatedAtDesc(@Param("volunteerId") UUID volunteerId, Pageable pageable);
-
-    /**
      * Find top rated updates
      */
     Page<Update> findByAverageRatingGreaterThanEqualOrderByAverageRatingDesc(Double minRating, Pageable pageable);
