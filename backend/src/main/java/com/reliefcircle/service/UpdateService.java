@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.LocalDateTime;
 
 @Slf4j
 @Service
@@ -134,24 +135,6 @@ public class UpdateService {
         Page<Update> updates = updateRepository.findByDonorIdOrderByCreatedAtDesc(donorId, pageable);
         return updates.map(this::convertToDto);
     }
-    
-    /**
-     * Get updates for charities that have been verified by a volunteer
-     */
-    @Transactional(readOnly = true)
-    public Page<UpdateDto> getUpdatesByVolunteer(UUID volunteerId, Pageable pageable) {
-        // Verify volunteer exists
-        User volunteer = userRepository.findById(volunteerId)
-                .orElseThrow(() -> new ResourceNotFoundException("Volunteer not found with ID: " + volunteerId));
-        
-        if (!volunteer.getIsVolunteer()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User is not a volunteer");
-        }
-        
-        Page<Update> updates = updateRepository.findByVolunteerIdOrderByCreatedAtDesc(volunteerId, pageable);
-        return updates.map(this::convertToDto);
-    }
-    
     
     /**
      * Delete an update

@@ -7,8 +7,8 @@ ReliefCircle Project Repository
 
 ### 1. Clone the Repository
 ```sh
-git clone https://github.com/yourusername/your-repo.git
-cd your-repo/backend
+git clone https://github.com/sonalilonkar1/CMPE272Project.git
+cd CMPE272Project/backend
 ```
 
 ### 2. Verify Java and Maven Installation
@@ -45,10 +45,6 @@ aws.s3.bucket-name=your_s3_bucket_name
 jwt.secret=your_jwt_secret
 jwt.expiration=86400000
 
-# PayPal Configuration (if used)
-paypal.client.id=your_paypal_client_id
-paypal.client.secret=your_paypal_client_secret
-paypal.mode=sandbox
 ```
 
 **Note:**  
