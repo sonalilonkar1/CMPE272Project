@@ -37,7 +37,7 @@ export default function FundraiserDashboard() {
   const stripeStatus = searchParams.get('stripe')
 
   useEffect(() => {
-    if (currentTab === 'charities' && fundraiserId && token) {
+    if (fundraiserId && token) {
       dispatch(fetchFundraiserCharities({ fundraiserId, page, token }))
     }
   }, [dispatch, currentTab, fundraiserId, page, token])

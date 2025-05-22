@@ -8,7 +8,7 @@ export default function TransactionsTab({ fundraiserId }) {
 
   useEffect(() => {
     if (profile?.stripeId) {
-      dispatch(fetchStripeAccountInfo(profile.stripeId));
+      dispatch(fetchStripeAccountInfo("acct_1RO0YyReABzSigiM"));
     }
   }, [dispatch, profile?.stripeId]);
 
@@ -33,6 +33,7 @@ export default function TransactionsTab({ fundraiserId }) {
   return (
     <div className="space-y-6">
       {/* Stripe Connection Section */}
+      {/* {profile?.stripeId} */}
       <div className="bg-green-50 border border-green-200 rounded-lg p-6 mb-4">
         <div className="flex items-center mb-4">
           <span className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-green-100 text-green-600 mr-3">

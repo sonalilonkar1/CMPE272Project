@@ -435,7 +435,10 @@ export default function DonorDashboard() {
                             <div className="flex-1 min-w-[320px] flex flex-col justify-between">
                               <div>
                                 <div className="font-regular text-lg text-gray-900">
-                                  {update.comment ? update.comment : 'No Title'}
+                                  {update.charityName ? update.charityName : 'No Charity Name'}
+                                </div>
+                                <div className="text-gray-600 mt-2">
+                                  {update.updateText ? update.updateText : 'No update message'}
                                 </div>
                                 <div className="flex items-center gap-6 mt-1">
                                   <span className="font-regular text-sm text-gray-900">
@@ -516,7 +519,7 @@ export default function DonorDashboard() {
                 <div className="sm:flex sm:items-start">
                   <div className="mt-3 text-center sm:mt-0 sm:text-left w-full">
                     <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                      {selectedUpdate.comment || 'No Title'}
+                      {selectedUpdate.charityName || 'No Charity Name'}
                     </h3>
                     <div className="mb-4 flex items-center text-sm text-gray-600">
                       <span className="font-medium">
@@ -529,8 +532,8 @@ export default function DonorDashboard() {
                           : 'Unknown date'}
                       </span>
                     </div>
-                    {selectedUpdate.message && (
-                      <p className="text-gray-600 mb-4">{selectedUpdate.content}</p>
+                    {selectedUpdate.updateText && (
+                      <p className="text-gray-600 mb-4">{selectedUpdate.updateText}</p>
                     )}
                     {selectedUpdate.fileUrl && (
                       <div className="border-t border-gray-200 pt-4 mb-6">

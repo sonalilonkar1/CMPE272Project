@@ -35,19 +35,19 @@ export default function DonationModal({ isOpen, onClose, charity, initialAmount 
       const ourdata = await ourresponse.json();
       console.log("webhook data" ,ourdata);
       // Create a test payment intent
-      // const response = await fetch('/api/create-payment-intent', {
-      //   method: 'POST',
-      //   headers: {
-      //     'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({
-      //     amount: parseFloat(amount) * 100, // Convert to cents
-      //     charityId: charity.id,
-      //     charityName: charity.name,
-      //     stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId : FALLBACK_STRIPE_ACCOUNT,
-      //     donorId: profile?.id,
-      //   }),
-      // })
+      const response = await fetch('/api/create-payment-intent', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          amount: parseFloat(amount) * 100, // Convert to cents
+          charityId: charity.id,
+          charityName: charity.name,
+          stripeAccount: charity.fundraiserStripeId ? charity.fundraiserStripeId : FALLBACK_STRIPE_ACCOUNT,
+          donorId: profile?.id,
+        }),
+      })
 
       const data = await response.json()
 
