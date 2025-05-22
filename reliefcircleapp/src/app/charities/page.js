@@ -104,7 +104,7 @@ export default function Charities() {
                   {/* Image Container */}
                   <div className="relative aspect-[4/3] overflow-hidden">
                     <img
-                      src={charity.imageUrl || '/images/charity-placeholder.jpg'}
+                      src={charity.imageUrl || '/images/placeholder.jpg'}
                       alt={charity.name}
                       className="w-full h-full object-cover"
                     />

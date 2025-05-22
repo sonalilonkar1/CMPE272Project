@@ -8,7 +8,7 @@ export const fetchCharities = createAsyncThunk(
   'charities/fetchCharities',
   async ({ page = 0, pageSize = 6 }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${CHARITY_ENDPOINTS.LIST}?page=${page}&pageSize=${pageSize}`);
+      const response = await axios.get(`${CHARITY_ENDPOINTS.LIST}?page=${page}&pageSize=${pageSize}&sortBy=createdAt&sortDirection=desc`);
       return response.data;
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to fetch charities';
