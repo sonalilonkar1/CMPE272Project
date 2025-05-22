@@ -16,6 +16,7 @@ public class UpdateRatingDto {
     private Long id;
     private Long updateId;
     private UUID donorId;
+    private String charityName;
     private String donorName;
     private String donorEmail;
     private Integer rating;
@@ -23,5 +24,6 @@ public class UpdateRatingDto {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private String fileUrl;
+    private String updateText;
     
 }
